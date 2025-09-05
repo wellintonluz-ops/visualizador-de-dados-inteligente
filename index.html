@@ -35,10 +35,10 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, getDocs, Timestamp, where, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, getDocs, Timestamp, where, doc, getDoc, setDoc, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        window.firebase = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, collection, addDoc, onSnapshot, query, getDocs, Timestamp, where, doc, getDoc, setDoc, setLogLevel };
+        window.firebase = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, collection, addDoc, onSnapshot, query, getDocs, Timestamp, where, doc, getDoc, setDoc, orderBy, setDoc };
     </script>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
@@ -53,6 +53,7 @@
         <div class="flex border-b border-gray-200 mb-6">
             <div id="cadastroTabBtn" class="tab-button active">Cadastro de Produtos</div>
             <div id="apontamentoTabBtn" class="tab-button">Apontamento de Ordem</div>
+            <div id="historicoTabBtn" class="tab-button">Histórico de Ordens</div>
         </div>
 
         <!-- Seção de Cadastro de Produtos -->
@@ -100,10 +101,25 @@
             <div id="ordemDetalhes" class="hidden mt-8">
                 <h3 class="text-xl font-semibold mb-4 text-gray-800 text-center">Detalhes da Ordem #<span id="ordemNumeroDisplay">--</span></h3>
                 <div class="flex justify-center space-x-4 mb-4">
-                    <button id="finalizarOrdemBtn" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg shadow-lg">Finalizar Ordem</button>
+                    <button id="finalizarOrdemBtn" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg shadow-lg" disabled>Finalizar Ordem</button>
                 </div>
                 <div id="etapasApontamento" class="space-y-6">
                     <!-- Etapas da ordem serão geradas aqui -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Seção de Histórico de Ordens -->
+        <div id="historicoTab" class="tab-content">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800 text-center">Histórico de Ordens</h2>
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-700">Ordens Em Andamento</h3>
+                    <ul id="ordensEmAndamentoUl" class="list-none space-y-2"></ul>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-700">Ordens Concluídas</h3>
+                    <ul id="ordensConcluidasUl" class="list-none space-y-2"></ul>
                 </div>
             </div>
         </div>
@@ -142,13 +158,15 @@
     </div>
 
     <script type="module">
-        const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, collection, addDoc, onSnapshot, query, getDocs, Timestamp, where, doc, getDoc, setDoc } = window.firebase;
+        const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, collection, addDoc, onSnapshot, query, getDocs, Timestamp, where, doc, getDoc, setDoc, orderBy } = window.firebase;
 
         // Elementos de navegação
         const cadastroTabBtn = document.getElementById('cadastroTabBtn');
         const apontamentoTabBtn = document.getElementById('apontamentoTabBtn');
+        const historicoTabBtn = document.getElementById('historicoTabBtn');
         const cadastroTab = document.getElementById('cadastroTab');
         const apontamentoTab = document.getElementById('apontamentoTab');
+        const historicoTab = document.getElementById('historicoTab');
 
         // Elementos do cadastro
         const codigoProdutoCadastroInput = document.getElementById('codigoProdutoCadastro');
@@ -166,6 +184,10 @@
         const ordemNumeroDisplay = document.getElementById('ordemNumeroDisplay');
         const finalizarOrdemBtn = document.getElementById('finalizarOrdemBtn');
         const etapasApontamentoDiv = document.getElementById('etapasApontamento');
+
+        // Elementos do histórico
+        const ordensEmAndamentoUl = document.getElementById('ordensEmAndamentoUl');
+        const ordensConcluidasUl = document.getElementById('ordensConcluidasUl');
 
         // Elementos de controle
         const userIdDisplay = document.getElementById('userIdDisplay');
@@ -187,6 +209,7 @@
         let currentPauseContext = null;
         let currentStartContext = null;
         let currentEditingProductId = null;
+        let currentOrderDocId = null;
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = {
@@ -216,6 +239,9 @@
         }
         function checkAllSubetapasConcluded(etapa) {
             return etapa.subetapas.every(subetapa => subetapa.fim !== null);
+        }
+        function checkAllEtapasConcluded(ordem) {
+            return ordem.etapas.every(etapa => etapa.concluida);
         }
 
         // Funções do Firebase
@@ -267,6 +293,32 @@
                     option.value = doc.id;
                     option.textContent = data.codigo;
                     produtoApontamentoSelect.appendChild(option);
+                });
+            });
+            
+            // Listener para o histórico de ordens
+            const ordensRef = collection(db, `artifacts/${appId}/public/data/ordens`);
+            onSnapshot(ordensRef, (snapshot) => {
+                ordensEmAndamentoUl.innerHTML = '';
+                ordensConcluidasUl.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const li = document.createElement('li');
+                    li.classList.add('p-4', 'bg-gray-100', 'rounded-lg', 'border', 'border-gray-200');
+                    li.innerHTML = `
+                        <p class="font-semibold text-gray-800">Ordem #${data.numero}</p>
+                        <p class="text-sm text-gray-600"><strong>Produto:</strong> ${data.produto}</p>
+                        <p class="text-sm text-gray-600"><strong>Quantidade:</strong> ${data.quantidade}</p>
+                        <p class="text-sm text-gray-600"><strong>Início:</strong> ${data.dataInicio ? data.dataInicio.toDate().toLocaleString('pt-BR') : '--'}</p>
+                        <p class="text-sm text-gray-600"><strong>Fim:</strong> ${data.dataFim ? data.dataFim.toDate().toLocaleString('pt-BR') : '--'}</p>
+                        <p class="text-sm text-gray-600"><strong>Tempo Líquido:</strong> ${data.tempoLiquidoFormatado || '--'}</p>
+                        <p class="text-sm text-gray-600"><strong>Produtividade:</strong> ${data.produtividade ? data.produtividade.toFixed(2) + ' pçs/hora' : '--'}</p>
+                    `;
+                    if (data.concluida) {
+                        ordensConcluidasUl.appendChild(li);
+                    } else {
+                        ordensEmAndamentoUl.appendChild(li);
+                    }
                 });
             });
         }
@@ -415,6 +467,7 @@
         // Lógica de botões
         cadastroTabBtn.addEventListener('click', () => switchTab('cadastroTab'));
         apontamentoTabBtn.addEventListener('click', () => switchTab('apontamentoTab'));
+        historicoTabBtn.addEventListener('click', () => switchTab('historicoTab'));
         fecharAvisoBtn.addEventListener('click', () => avisoModal.classList.add('hidden'));
 
         addEtapaBtn.addEventListener('click', () => createEtapaField());
@@ -518,6 +571,7 @@
                 produtoData.etapas.forEach(etapaTemplate => {
                     const novaEtapa = {
                         nome: etapaTemplate.nome,
+                        responsavel: null,
                         inicio: null,
                         fim: null,
                         tempoLiquido: 0,
@@ -564,6 +618,7 @@
         function renderizarOrdem() {
             etapasApontamentoDiv.innerHTML = '';
             ordemNumeroDisplay.textContent = ordemProducaoAtual.numero;
+            finalizarOrdemBtn.disabled = true;
             
             ordemProducaoAtual.etapas.forEach((etapa, index) => {
                 const etapaDiv = document.createElement('div');
@@ -683,6 +738,53 @@
             justificativaModal.classList.add('hidden');
             currentPauseContext = null;
         });
+        
+        // Lógica para preencher responsável e iniciar a etapa
+        salvarResponsavelBtn.addEventListener('click', () => {
+            if (!currentStartContext) return;
+            const responsavel = responsavelInput.value.trim();
+            if (responsavel === '') {
+                showAviso("O nome do responsável não pode estar vazio.");
+                return;
+            }
+
+            const { parent, index, subIndex } = currentStartContext;
+            const now = new Date().getTime();
+            
+            // Lógica para subetapa
+            const subetapaData = ordemProducaoAtual.etapas[index].subetapas[subIndex];
+            subetapaData.inicio = now;
+            subetapaData.responsavel = responsavel;
+            parent.querySelector('.responsavel-subetapa-display').textContent = `Responsável: ${responsavel}`;
+            
+            // Inicia a etapa pai se ainda não estiver iniciada
+            const etapaData = ordemProducaoAtual.etapas[index];
+            if (!etapaData.inicio) {
+                etapaData.inicio = now;
+                etapaData.responsavel = responsavel;
+                const parentEtapaElement = document.querySelector(`.etapa-card[data-index="${index}"]`);
+                parentEtapaElement.querySelector('.responsavel-etapa-display').textContent = `Responsável: ${responsavel}`;
+                
+                // Inicia a ordem completa se for a primeira etapa
+                if (!ordemProducaoAtual.dataInicio) {
+                    ordemProducaoAtual.dataInicio = Timestamp.now();
+                }
+            }
+            
+            parent.querySelector('.iniciar-btn').disabled = true;
+            parent.querySelector('.pausar-btn').disabled = false;
+            parent.querySelector('.concluir-btn').disabled = false;
+            
+            responsavelModal.classList.add('hidden');
+            responsavelInput.value = '';
+            currentStartContext = null;
+        });
+
+        cancelarResponsavelBtn.addEventListener('click', () => {
+            responsavelModal.classList.add('hidden');
+            responsavelInput.value = '';
+            currentStartContext = null;
+        });
 
         function handleConclude(event) {
             const btn = event.target;
@@ -723,7 +825,7 @@
             parent.querySelector('.iniciar-btn').disabled = true;
             parent.querySelector('.pausar-btn').disabled = true;
 
-            showAviso(`Sub-etapa "${subetapaData.nome}" concluída!`);
+            showAviso(`Sub-etapa "${subetapaData.nome}" concluída! Tempo Líquido: ${subetapaData.tempoLiquidoFormatado}`);
             parent.classList.add('etapa-concluida');
 
             // Checa se todas as subetapas da etapa pai foram concluídas
@@ -752,7 +854,7 @@
                 
                 showAviso(`Etapa "${etapaData.nome}" concluída automaticamente!`);
 
-                const allEtapasConcluidas = ordemProducaoAtual.etapas.every(etapa => etapa.concluida);
+                const allEtapasConcluidas = checkAllEtapasConcluded(ordemProducaoAtual);
                 if (allEtapasConcluidas) {
                     handleFinalizeMainAutomatic();
                 }
@@ -760,12 +862,14 @@
         }
         
         async function handleFinalizeMainAutomatic() {
-             if (ordemProducaoAtual.concluida) return;
-             ordemProducaoAtual.dataFim = Timestamp.now();
+            if (ordemProducaoAtual.concluida) return;
+            ordemProducaoAtual.dataFim = Timestamp.now();
+            
             let totalTempoLiquidoOrdem = 0;
             ordemProducaoAtual.etapas.forEach(etapa => {
                 totalTempoLiquidoOrdem += etapa.tempoLiquido;
             });
+
             ordemProducaoAtual.tempoLiquidoMs = totalTempoLiquidoOrdem;
             ordemProducaoAtual.tempoLiquidoFormatado = formatarTempo(totalTempoLiquidoOrdem);
             
@@ -787,7 +891,7 @@
         async function handleFinalizeMain() {
             if (ordemProducaoAtual.concluida) return;
 
-            const allEtapasConcluidas = ordemProducaoAtual.etapas.every(etapa => etapa.concluida);
+            const allEtapasConcluidas = checkAllEtapasConcluded(ordemProducaoAtual);
             if (!allEtapasConcluidas) {
                 showAviso("Não é possível finalizar a ordem. Algumas etapas ainda não foram concluídas.");
                 return;
