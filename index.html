@@ -107,13 +107,14 @@
                 <h3 class="text-xl font-semibold mb-4 text-gray-800 text-center">Detalhes da Ordem #<span id="ordemNumeroDisplay">--</span></h3>
                 <div class="flex justify-center space-x-4 mb-4">
                     <button id="finalizarOrdemBtn" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg shadow-lg" disabled>Finalizar Ordem</button>
+                    <button id="voltarBtn" class="bg-gray-400 hover:bg-gray-500 text-white font-semibold py-2 px-6 rounded-lg shadow-lg">Voltar</button>
                 </div>
                 <div id="etapasApontamento" class="space-y-6">
                     <!-- Etapas da ordem serão geradas aqui -->
                 </div>
             </div>
             
-            <div class="space-y-6">
+            <div id="listasDeOrdens" class="space-y-6">
                 <div>
                     <h3 class="text-xl font-semibold text-gray-700">Ordens Em Andamento</h3>
                     <ul id="ordensEmAndamentoUl" class="list-none space-y-2"></ul>
@@ -189,6 +190,8 @@
         // Elementos do histórico
         const ordensEmAndamentoUl = document.getElementById('ordensEmAndamentoUl');
         const ordensConcluidasUl = document.getElementById('ordensConcluidasUl');
+        const listasDeOrdensDiv = document.getElementById('listasDeOrdens');
+        const voltarBtn = document.getElementById('voltarBtn');
 
         // Elementos de controle
         const userIdDisplay = document.getElementById('userIdDisplay');
@@ -332,15 +335,13 @@
         async function carregarOrdemParaApontamento(orderId, orderData) {
             currentOrderDocId = orderId;
             ordemProducaoAtual = orderData;
-            switchTab('apontamentoTab');
+            switchTab('historicoTab');
             
-            // Renderiza o formulário de apontamento com os dados da ordem
-            numeroOrdemInput.value = orderData.numero;
-            produtoApontamentoSelect.value = ''; // Limpa a seleção
-            quantidadeApontamentoInput.value = orderData.quantidade;
-            abrirOrdemBtn.disabled = true; // Desabilita o botão de abrir nova ordem
-            
+            listasDeOrdensDiv.classList.add('hidden');
             ordemDetalhesDiv.classList.remove('hidden');
+            
+            finalizarOrdemBtn.disabled = !checkAllEtapasConcluded(ordemProducaoAtual);
+            
             renderizarOrdem();
         }
         
@@ -489,7 +490,6 @@
             responsavelInput.value = '';
             currentStartContext = null;
             
-            // Atualiza o documento no Firestore
             await updateOrderInFirestore();
         });
 
@@ -503,6 +503,12 @@
         cadastroTabBtn.addEventListener('click', () => switchTab('cadastroTab'));
         apontamentoTabBtn.addEventListener('click', () => switchTab('apontamentoTab'));
         historicoTabBtn.addEventListener('click', () => switchTab('historicoTab'));
+        voltarBtn.addEventListener('click', () => {
+             ordemDetalhesDiv.classList.add('hidden');
+             listasDeOrdensDiv.classList.remove('hidden');
+             currentOrderDocId = null;
+             ordemProducaoAtual = {};
+        });
         fecharAvisoBtn.addEventListener('click', () => avisoModal.classList.add('hidden'));
 
         addEtapaBtn.addEventListener('click', () => createEtapaField());
@@ -644,8 +650,11 @@
                 const docRef = await addDoc(collection(db, `artifacts/${appId}/public/data/ordens`), ordemProducaoAtual);
                 currentOrderDocId = docRef.id;
                 
-                renderizarOrdem();
                 switchTab('historicoTab');
+                listasDeOrdensDiv.classList.add('hidden');
+                ordemDetalhesDiv.classList.remove('hidden');
+                
+                renderizarOrdem();
                 abrirOrdemBtn.disabled = true;
 
             } catch (e) {
@@ -713,6 +722,10 @@
             document.querySelectorAll('.pausar-btn').forEach(btn => btn.addEventListener('click', handlePause));
             document.querySelectorAll('.concluir-btn').forEach(btn => btn.addEventListener('click', handleConclude));
             finalizarOrdemBtn.addEventListener('click', handleFinalizeMain);
+            voltarBtn.addEventListener('click', () => {
+                 ordemDetalhesDiv.classList.add('hidden');
+                 listasDeOrdensDiv.classList.remove('hidden');
+            });
         }
         
         // Funções para controle de tempo
@@ -772,20 +785,389 @@
             const pauseTime = new Date().getTime();
             
             const subetapaData = ordemProducaoAtual.etapas[index].subetapas[subIndex];
-            if (!subetapaData.pausaInicio) { // Se for a primeira pausa
+            if (!subetapaData.emPausa) { // Se for a primeira pausa
                 subetapaData.pausaInicio = pauseTime;
                 subetapaData.pausas.push({
                     justificativa: justificativa,
                     inicio: pauseTime
                 });
+                document.querySelector(`.subetapa-card[data-index="${index}"][data-sub-index="${subIndex}"] .pausar-btn`).textContent = 'Continuar';
+                subetapaData.emPausa = true;
             } else { // Se for uma continuação de pausa
                 const lastPause = subetapaData.pausas[subetapaData.pausas.length - 1];
                 lastPause.fim = pauseTime;
                 const duracao = lastPause.fim - lastPause.inicio;
                 subetapaData.tempoTotalPausas += duracao;
+                 document.querySelector(`.subetapa-card[data-index="${index}"][data-sub-index="${subIndex}"] .pausar-btn`).textContent = 'Pausar';
+                subetapaData.emPausa = false;
             }
-            document.querySelector(`.subetapa-card[data-index="${index}"][data-sub-index="${subIndex}"] .pausar-btn`).textContent = 'Continuar';
-            subetapaData.emPausa = true;
+
+            justificativaInput.value = '';
+            justificativaModal.classList.add('hidden');
+            currentPauseContext = null;
+
+            await updateOrderInFirestore();
+        });
+
+        document.getElementById('cancelarJustificativaBtn').addEventListener('click', () => {
+            justificativaInput.value = '';
+            justificativaModal.classList.add('hidden');
+            currentPauseContext = null;
+        });
+        
+        // Lógica para preencher responsável e iniciar a etapa
+        salvarResponsavelBtn.addEventListener('click', async () => {
+            if (!currentStartContext) return;
+            const responsavel = responsavelInput.value.trim();
+            if (responsavel === '') {
+                showAviso("O nome do responsável não pode estar vazio.");
+                return;
+            }
+
+            const { parent, index, subIndex } = currentStartContext;
+            const now = new Date().getTime();
+            
+            // Lógica para subetapa
+            const subetapaData = ordemProducaoAtual.etapas[index].subetapas[subIndex];
+            subetapaData.inicio = now;
+            subetapaData.responsavel = responsavel;
+            parent.querySelector('.responsavel-subetapa-display').textContent = `Responsável: ${responsavel}`;
+            
+            // Inicia a etapa pai se ainda não estiver iniciada
+            const etapaData = ordemProducaoAtual.etapas[index];
+            if (!etapaData.inicio) {
+                etapaData.inicio = now;
+                etapaData.responsavel = responsavel;
+                const parentEtapaElement = document.querySelector(`.etapa-card[data-index="${index}"]`);
+                parentEtapaElement.querySelector('.responsavel-etapa-display').textContent = `Responsável: ${responsavel}`;
+                
+                // Inicia a ordem completa se for a primeira etapa
+                if (!ordemProducaoAtual.dataInicio) {
+                    ordemProducaoAtual.dataInicio = Timestamp.now();
+                }
+            }
+            
+            parent.querySelector('.iniciar-btn').disabled = true;
+            parent.querySelector('.pausar-btn').disabled = false;
+            parent.querySelector('.concluir-btn').disabled = false;
+            
+            responsavelModal.classList.add('hidden');
+            responsavelInput.value = '';
+            currentStartContext = null;
+            
+            await updateOrderInFirestore();
+        });
+
+        cancelarResponsavelBtn.addEventListener('click', () => {
+            responsavelModal.classList.add('hidden');
+            responsavelInput.value = '';
+            currentStartContext = null;
+        });
+
+        // Lógica de botões
+        cadastroTabBtn.addEventListener('click', () => switchTab('cadastroTab'));
+        apontamentoTabBtn.addEventListener('click', () => switchTab('apontamentoTab'));
+        historicoTabBtn.addEventListener('click', () => switchTab('historicoTab'));
+        voltarBtn.addEventListener('click', () => {
+             ordemDetalhesDiv.classList.add('hidden');
+             listasDeOrdensDiv.classList.remove('hidden');
+             currentOrderDocId = null;
+             ordemProducaoAtual = {};
+        });
+        fecharAvisoBtn.addEventListener('click', () => avisoModal.classList.add('hidden'));
+
+        addEtapaBtn.addEventListener('click', () => createEtapaField());
+
+        salvarProdutoBtn.addEventListener('click', async () => {
+            const codigo = codigoProdutoCadastroInput.value.trim();
+            if (!codigo) {
+                showAviso("Por favor, insira o código do produto.");
+                return;
+            }
+            if (!userId) {
+                showAviso("Usuário não autenticado.");
+                return;
+            }
+
+            const etapas = [];
+            document.querySelectorAll('.etapa').forEach(etapaDiv => {
+                const etapaNome = etapaDiv.querySelector('.etapa-nome').value.trim();
+                if (!etapaNome) return;
+
+                const subetapas = [];
+                etapaDiv.querySelectorAll('.subetapa-nome').forEach(subetapaInput => {
+                    const subetapaNome = subetapaInput.value.trim();
+                    if (subetapaNome) {
+                        subetapas.push({ nome: subetapaNome });
+                    }
+                });
+
+                etapas.push({ nome: etapaNome, subetapas: subetapas });
+            });
+            
+            if (etapas.length === 0) {
+                showAviso("Por favor, adicione ao menos uma etapa.");
+                return;
+            }
+
+            const produtoData = {
+                codigo: codigo,
+                etapas: etapas
+            };
+
+            try {
+                if (currentEditingProductId) {
+                    const produtoDocRef = doc(db, `artifacts/${appId}/public/data/produtos`, currentEditingProductId);
+                    await setDoc(produtoDocRef, produtoData);
+                    showAviso("Produto atualizado com sucesso!");
+                    salvarProdutoBtn.textContent = 'Salvar Produto';
+                    currentEditingProductId = null;
+                } else {
+                    await addDoc(collection(db, `artifacts/${appId}/public/data/produtos`), produtoData);
+                    showAviso("Produto salvo com sucesso!");
+                }
+                codigoProdutoCadastroInput.value = '';
+                etapasContainer.innerHTML = '';
+            } catch (e) {
+                console.error("Erro ao salvar/atualizar produto: ", e);
+                showAviso("Erro ao salvar/atualizar produto. Tente novamente.");
+            }
+        });
+
+        abrirOrdemBtn.addEventListener('click', async () => {
+            const numeroOrdem = numeroOrdemInput.value.trim();
+            const produtoId = produtoApontamentoSelect.value;
+            const quantidade = parseInt(quantidadeApontamentoInput.value, 10);
+
+            if (!numeroOrdem || !produtoId || isNaN(quantidade) || quantidade <= 0) {
+                showAviso("Por favor, preencha todos os campos corretamente.");
+                return;
+            }
+            if (!userId) {
+                showAviso("Usuário não autenticado.");
+                return;
+            }
+            
+            try {
+                const produtoDocRef = doc(db, `artifacts/${appId}/public/data/produtos`, produtoId);
+                const produtoDoc = await getDoc(produtoDocRef);
+                
+                // Adicionado: Verificação se o documento existe
+                if (!produtoDoc.exists()) {
+                    showAviso("Produto não encontrado. Ele pode ter sido removido.");
+                    console.error("Erro: Produto com ID " + produtoId + " não encontrado no banco de dados.");
+                    return;
+                }
+                
+                const produtoData = produtoDoc.data();
+                
+                ordemProducaoAtual = {
+                    numero: numeroOrdem,
+                    produto: produtoData.codigo,
+                    quantidade: quantidade,
+                    dataInicio: null,
+                    dataFim: null,
+                    tempoLiquidoMs: 0,
+                    tempoLiquidoFormatado: '--',
+                    produtividade: 0,
+                    concluida: false,
+                    etapas: [],
+                };
+                
+                produtoData.etapas.forEach(etapaTemplate => {
+                    const novaEtapa = {
+                        nome: etapaTemplate.nome,
+                        responsavel: null,
+                        inicio: null,
+                        fim: null,
+                        tempoLiquido: 0,
+                        tempoTotalPausas: 0,
+                        concluida: false,
+                        subetapas: []
+                    };
+                    
+                    etapaTemplate.subetapas.forEach(subetapaTemplate => {
+                        novaEtapa.subetapas.push({
+                            nome: subetapaTemplate.nome,
+                            responsavel: null,
+                            inicio: null,
+                            fim: null,
+                            pausaInicio: null,
+                            pausas: [],
+                            tempoTotalPausas: 0,
+                            emPausa: false,
+                            quantidade: quantidade,
+                            tempoLiquido: 0,
+                            produtividade: 0
+                        });
+                    });
+                    
+                    if (novaEtapa.subetapas.length > 0) {
+                        novaEtapa.quantidade = novaEtapa.subetapas.length * quantidade;
+                    } else {
+                        novaEtapa.quantidade = quantidade;
+                    }
+                    
+                    ordemProducaoAtual.etapas.push(novaEtapa);
+                });
+
+                // Salva a nova ordem no Firestore e pega o ID do documento
+                const docRef = await addDoc(collection(db, `artifacts/${appId}/public/data/ordens`), ordemProducaoAtual);
+                currentOrderDocId = docRef.id;
+                
+                switchTab('historicoTab');
+                listasDeOrdensDiv.classList.add('hidden');
+                ordemDetalhesDiv.classList.remove('hidden');
+                
+                renderizarOrdem();
+                abrirOrdemBtn.disabled = true;
+
+            } catch (e) {
+                console.error("Erro ao abrir ordem:", e);
+                showAviso("Erro ao abrir ordem. Verifique se o produto está cadastrado.");
+            }
+        });
+        
+        async function updateOrderInFirestore() {
+            if (!currentOrderDocId) return;
+            try {
+                const docRef = doc(db, `artifacts/${appId}/public/data/ordens`, currentOrderDocId);
+                await setDoc(docRef, ordemProducaoAtual);
+            } catch (e) {
+                console.error("Erro ao atualizar ordem no Firestore:", e);
+                showAviso("Erro ao atualizar a ordem. Verifique sua conexão.");
+            }
+        }
+        
+        function renderizarOrdem() {
+            etapasApontamentoDiv.innerHTML = '';
+            ordemNumeroDisplay.textContent = ordemProducaoAtual.numero;
+            finalizarOrdemBtn.disabled = !checkAllEtapasConcluded(ordemProducaoAtual);
+            
+            ordemProducaoAtual.etapas.forEach((etapa, index) => {
+                const etapaDiv = document.createElement('div');
+                etapaDiv.classList.add('etapa-card', 'p-4', 'bg-gray-100', 'rounded-lg', 'border', 'border-gray-200', 'space-y-2');
+                etapaDiv.dataset.index = index;
+                if (etapa.concluida) etapaDiv.classList.add('etapa-concluida');
+                etapaDiv.innerHTML = `
+                    <h4 class="text-md font-semibold">${etapa.nome} (${etapa.quantidade} pçs)</h4>
+                    <p class="text-sm text-gray-500 responsavel-etapa-display">${etapa.responsavel ? 'Responsável: ' + etapa.responsavel : ''}</p>
+                    <p class="text-sm text-gray-500 mt-2">
+                        <span class="font-medium">Tempo Líquido Total:</span>
+                        <span class="tempo-liquido-etapa">${etapa.tempoLiquidoFormatado || '--'}</span>
+                    </p>
+                    <p class="text-sm text-gray-500">
+                        <span class="font-medium">Pausas Total:</span>
+                        <span class="pausas-etapa">${formatarTempo(etapa.tempoTotalPausas) || '--'}</span>
+                    </p>
+                    <div class="subetapas-display pl-4 space-y-2"></div>
+                `;
+                etapasApontamentoDiv.appendChild(etapaDiv);
+                
+                const subetapasContainer = etapaDiv.querySelector('.subetapas-display');
+                etapa.subetapas.forEach((subetapa, subIndex) => {
+                    const subetapaDiv = document.createElement('div');
+                    subetapaDiv.classList.add('subetapa-card', 'p-2', 'bg-white', 'rounded-lg', 'border', 'border-gray-200', 'flex', 'items-center', 'space-x-2');
+                    subetapaDiv.dataset.index = index;
+                    subetapaDiv.dataset.subIndex = subIndex;
+                    if (subetapa.fim) subetapaDiv.classList.add('etapa-concluida');
+                    subetapaDiv.innerHTML = `
+                        <span class="flex-1 text-sm">${subetapa.nome} (${subetapa.quantidade} pçs)</span>
+                        <span class="flex-1 text-xs text-gray-500 responsavel-subetapa-display">${subetapa.responsavel ? 'Responsável: ' + subetapa.responsavel : ''}</span>
+                        <button class="iniciar-btn bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-1 px-4 rounded-md" ${subetapa.inicio ? 'disabled' : ''}>Iniciar</button>
+                        <button class="pausar-btn bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-1 px-4 rounded-md" ${!subetapa.inicio || subetapa.fim ? 'disabled' : ''}>${subetapa.emPausa ? 'Continuar' : 'Pausar'}</button>
+                        <button class="concluir-btn bg-green-600 hover:bg-green-700 text-white font-semibold py-1 px-4 rounded-md" ${!subetapa.inicio || subetapa.fim ? 'disabled' : ''}>Concluir</button>
+                    `;
+                    subetapasContainer.appendChild(subetapaDiv);
+                });
+            });
+
+            // Adiciona event listeners dinamicamente
+            document.querySelectorAll('.iniciar-btn').forEach(btn => btn.addEventListener('click', handleStart));
+            document.querySelectorAll('.pausar-btn').forEach(btn => btn.addEventListener('click', handlePause));
+            document.querySelectorAll('.concluir-btn').forEach(btn => btn.addEventListener('click', handleConclude));
+            finalizarOrdemBtn.addEventListener('click', handleFinalizeMain);
+            voltarBtn.addEventListener('click', () => {
+                 ordemDetalhesDiv.classList.add('hidden');
+                 listasDeOrdensDiv.classList.remove('hidden');
+                 currentOrderDocId = null;
+                 ordemProducaoAtual = {};
+            });
+        }
+        
+        // Funções para controle de tempo
+        function handleStart(event) {
+            const btn = event.target;
+            const parent = btn.closest('.subetapa-card');
+            const index = parseInt(parent.dataset.index);
+            const subIndex = parseInt(parent.dataset.subIndex);
+            
+            const subetapaData = ordemProducaoAtual.etapas[index].subetapas[subIndex];
+
+            if (subetapaData.inicio) {
+                showAviso("Esta sub-etapa já foi iniciada.");
+                return;
+            }
+
+            currentStartContext = { parent: parent, index: index, subIndex: subIndex };
+            responsavelModal.classList.remove('hidden');
+        }
+
+        function handlePause(event) {
+            const btn = event.target;
+            const parent = btn.closest('.subetapa-card');
+            const index = parseInt(parent.dataset.index);
+            const subIndex = parseInt(parent.dataset.subIndex);
+
+            const subetapaData = ordemProducaoAtual.etapas[index].subetapas[subIndex];
+
+            if (!subetapaData.inicio || subetapaData.fim) {
+                showAviso("Só é possível pausar uma sub-etapa em andamento.");
+                return;
+            }
+
+            if (subetapaData.emPausa) {
+                const now = new Date().getTime();
+                const duracaoPausa = now - subetapaData.pausaInicio;
+                subetapaData.tempoTotalPausas += duracaoPausa;
+                subetapaData.pausas[subetapaData.pausas.length - 1].fim = now;
+                subetapaData.emPausa = false;
+                btn.textContent = 'Pausar';
+            } else {
+                currentPauseContext = { index: index, subIndex: subIndex };
+                justificativaModal.classList.remove('hidden');
+            }
+        }
+        
+        // Lógica de manipulação de pausas
+        document.getElementById('salvarJustificativaBtn').addEventListener('click', async () => {
+            if (!currentPauseContext) return;
+            const justificativa = justificativaInput.value;
+            if (justificativa.trim() === '') {
+                showAviso("A justificativa não pode estar vazia.");
+                return;
+            }
+            
+            const { index, subIndex } = currentPauseContext;
+            const pauseTime = new Date().getTime();
+            
+            const subetapaData = ordemProducaoAtual.etapas[index].subetapas[subIndex];
+            if (subetapaData.emPausa) {
+                 const lastPause = subetapaData.pausas[subetapaData.pausas.length - 1];
+                 lastPause.fim = pauseTime;
+                 const duracao = lastPause.fim - lastPause.inicio;
+                 subetapaData.tempoTotalPausas += duracao;
+                 document.querySelector(`.subetapa-card[data-index="${index}"][data-sub-index="${subIndex}"] .pausar-btn`).textContent = 'Pausar';
+                 subetapaData.emPausa = false;
+            } else {
+                 subetapaData.pausaInicio = pauseTime;
+                 subetapaData.pausas.push({
+                     justificativa: justificativa,
+                     inicio: pauseTime
+                 });
+                 document.querySelector(`.subetapa-card[data-index="${index}"][data-sub-index="${subIndex}"] .pausar-btn`).textContent = 'Continuar';
+                 subetapaData.emPausa = true;
+            }
 
             justificativaInput.value = '';
             justificativaModal.classList.add('hidden');
@@ -922,6 +1304,7 @@
                     handleFinalizeMainAutomatic();
                 }
             }
+            updateOrderInFirestore(); // Atualiza a ordem após a conclusão da sub-etapa
         }
         
         async function handleFinalizeMainAutomatic() {
@@ -941,10 +1324,11 @@
             ordemProducaoAtual.concluida = true;
             
             try {
-                await addDoc(collection(db, `artifacts/${appId}/public/data/ordens`), ordemProducaoAtual);
+                const docRef = doc(db, `artifacts/${appId}/public/data/ordens`, currentOrderDocId);
+                await setDoc(docRef, ordemProducaoAtual);
                 showAviso("Ordem de produção finalizada e salva automaticamente com sucesso!");
                 ordemDetalhesDiv.classList.add('hidden');
-                abrirOrdemBtn.disabled = false;
+                listasDeOrdensDiv.classList.remove('hidden');
             } catch (e) {
                 console.error("Erro ao salvar ordem automaticamente:", e);
                 showAviso("Erro ao salvar ordem. Verifique a conexão.");
@@ -975,10 +1359,11 @@
             ordemProducaoAtual.concluida = true;
 
             try {
-                await addDoc(collection(db, `artifacts/${appId}/public/data/ordens`), ordemProducaoAtual);
+                const docRef = doc(db, `artifacts/${appId}/public/data/ordens`, currentOrderDocId);
+                await setDoc(docRef, ordemProducaoAtual);
                 showAviso("Ordem de produção finalizada e salva com sucesso!");
                 ordemDetalhesDiv.classList.add('hidden');
-                abrirOrdemBtn.disabled = false;
+                listasDeOrdensDiv.classList.remove('hidden');
             } catch (e) {
                 console.error("Erro ao salvar ordem:", e);
                 showAviso("Erro ao salvar ordem. Verifique a conexão.");
