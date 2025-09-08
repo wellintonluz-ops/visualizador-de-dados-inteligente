@@ -139,7 +139,7 @@
         </div>
         
         <!-- Modal para preencher responsável -->
-        <div id="responsavelModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
+        <div id="responsavelModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity50 flex items-center justify-center">
             <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md border border-gray-200">
                 <h3 class="text-lg font-bold mb-4">Responsável pela Etapa</h3>
                 <input type="text" id="responsavelInput" class="block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Nome do operador">
@@ -632,7 +632,7 @@
             ordemProducaoAtual.tempoLiquidoMs = totalTempoLiquidoOrdem;
             ordemProducaoAtual.tempoLiquidoFormatado = formatarTempo(totalTempoLiquidoOrdem);
             
-            const tempoLiquidoEm Horas = ordemProducaoAtual.tempoLiquidoMs / (1000 * 60 * 60);
+            const tempoLiquidoEmHoras = ordemProducaoAtual.tempoLiquidoMs / (1000 * 60 * 60);
             ordemProducaoAtual.produtividade = tempoLiquidoEmHoras > 0 ? ordemProducaoAtual.quantidade / tempoLiquidoEmHoras : 0;
             ordemProducaoAtual.concluida = true;
 
@@ -652,3 +652,4 @@
     </script>
 </body>
 </html>
+
