@@ -5,68 +5,59 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Apontamento de Produção Avançado</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Adição da biblioteca Chart.js para os dashboards -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4e6;
-            color: #1f2937;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; color: #1f2937; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .tab-button {
-            @apply flex-1 py-2 px-4 text-center cursor-pointer font-semibold transition-colors;
-        }
-        .tab-button.active {
-            @apply bg-indigo-600 text-white rounded-t-lg;
-        }
-        .tab-button:not(.active) {
-            @apply bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-t-lg;
-        }
-        .product-item {
-            @apply p-2 bg-gray-100 rounded border border-gray-200 cursor-pointer hover:bg-gray-200 transition-colors;
-        }
-        .etapa-concluida {
-            background-color: #d1fae5;
-            border-color: #6ee7b7;
-        }
+        .tab-button { @apply flex-1 py-2 px-4 text-center cursor-pointer font-semibold transition-colors duration-200; }
+        .product-item { @apply p-2 bg-gray-100 rounded border border-gray-200 cursor-pointer hover:bg-gray-200 transition-colors; }
+        .etapa-concluida { background-color: #d1fae5 !important; border-color: #6ee7b7; }
     </style>
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, getDocs, Timestamp, where, doc, getDoc, setDoc, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
-        window.firebase = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, collection, addDoc, onSnapshot, query, getDocs, Timestamp, where, doc, getDoc, setDoc, orderBy, setDoc };
-    </script>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
     <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-2xl border border-gray-200">
         <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Sistema de Apontamento</h1>
-        
         <div class="text-center text-sm mb-4 text-gray-500">
             <p>ID do Usuário: <span id="userIdDisplay" class="font-mono text-xs">Carregando...</span></p>
         </div>
 
-        <!-- Abas de Navegação -->
         <div class="flex space-x-2 mb-6">
-            <div id="cadastroTabBtn" class="tab-button active">Cadastro de Produtos</div>
-            <div id="apontamentoTabBtn" class="tab-button">Apontamento de Ordem</div>
-            <div id="historicoTabBtn" class="tab-button">Histórico de Ordens</div>
+            <div id="cadastroTabBtn" class="tab-button flex items-center justify-center space-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M9 2a1 1 0 00-1 1v1H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V6a2 2 0 00-2-2h-2V3a1 1 0 00-1-1H9z" />
+                    <path fill-rule="evenodd" d="M9 6a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1z" clip-rule="evenodd" />
+                </svg>
+                <span>Cadastro de Produtos</span>
+            </div>
+            <div id="apontamentoTabBtn" class="tab-button flex items-center justify-center space-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.415L11 9.586V6z" clip-rule="evenodd" />
+                </svg>
+                <span>Apontamento de Ordem</span>
+            </div>
+            <div id="historicoTabBtn" class="tab-button flex items-center justify-center space-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5z" />
+                  <path d="M2 12a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2z" />
+                </svg>
+                <span>Histórico de Ordens</span>
+            </div>
+            <div id="dashboardTabBtn" class="tab-button flex items-center justify-center space-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+                </svg>
+                <span>Dashboard</span>
+            </div>
         </div>
-
-        <!-- Seção de Cadastro de Produtos -->
-        <div id="cadastroTab" class="tab-content active">
+        
+        <div id="cadastroTab" class="tab-content">
             <h2 class="text-2xl font-semibold mb-4 text-gray-800 text-center">Cadastro de Produtos</h2>
             <div class="space-y-4">
-                <div>
-                    <label for="codigoProdutoCadastro" class="block text-sm font-medium text-gray-700">Código do Produto Acabado</label>
-                    <input type="text" id="codigoProdutoCadastro" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Ex: UAC0001-N">
-                </div>
-                <div id="etapasContainer" class="space-y-4">
-                    <!-- Etapas serão adicionadas aqui -->
-                </div>
+                <div><label for="codigoProdutoCadastro" class="block text-sm font-medium text-gray-700">Código do Produto Acabado</label><input type="text" id="codigoProdutoCadastro" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Ex: UAC0001-N"></div>
+                <div id="etapasContainer" class="space-y-4"></div>
                 <button id="addEtapaBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow">Adicionar Etapa</button>
                 <button id="salvarProdutoBtn" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow">Salvar Produto</button>
             </div>
@@ -75,580 +66,731 @@
                 <ul id="listaProdutosCadastrados" class="list-none space-y-2"></ul>
             </div>
         </div>
-
-        <!-- Seção de Apontamento de Ordem de Produção -->
+        
         <div id="apontamentoTab" class="tab-content">
             <h2 class="text-2xl font-semibold mb-4 text-gray-800 text-center">Apontamento de Ordem de Produção</h2>
             <div class="space-y-4">
-                <div>
-                    <label for="numeroOrdem" class="block text-sm font-medium text-gray-700">Número da Ordem</label>
-                    <input type="text" id="numeroOrdem" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Ex: 123456">
-                </div>
-                <div>
-                    <label for="produtoApontamento" class="block text-sm font-medium text-gray-700">Código do Produto</label>
-                    <select id="produtoApontamento" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
-                        <option value="">Selecione um produto...</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="quantidadeApontamento" class="block text-sm font-medium text-gray-700">Quantidade</label>
-                    <input type="number" id="quantidadeApontamento" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Ex: 100">
-                </div>
+                <div><label for="numeroOrdem" class="block text-sm font-medium text-gray-700">Número da Ordem</label><input type="text" id="numeroOrdem" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Ex: 123456"></div>
+                <div><label for="produtoApontamento" class="block text-sm font-medium text-gray-700">Código do Produto</label><select id="produtoApontamento" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"><option value="">Selecione um produto...</option></select></div>
+                <div><label for="quantidadeApontamento" class="block text-sm font-medium text-gray-700">Quantidade</label><input type="number" id="quantidadeApontamento" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Ex: 100"></div>
                 <button id="abrirOrdemBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow">Abrir Ordem</button>
             </div>
         </div>
         
-        <!-- Seção de Histórico de Ordens -->
         <div id="historicoTab" class="tab-content">
             <h2 class="text-2xl font-semibold mb-4 text-gray-800 text-center">Histórico de Ordens</h2>
-            
-            <!-- Detalhes da Ordem Explodida -->
             <div id="ordemDetalhes" class="hidden mt-8 p-4 bg-white rounded-lg shadow-md border border-gray-200">
                 <h3 class="text-xl font-semibold mb-4 text-gray-800 text-center">Detalhes da Ordem #<span id="ordemNumeroDisplay">--</span></h3>
                 <div class="flex justify-center space-x-4 mb-4">
-                    <button id="finalizarOrdemBtn" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg shadow-lg" disabled>Finalizar Ordem</button>
+                    <button id="finalizarOrdemBtn" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled>Finalizar Ordem</button>
                     <button id="voltarBtn" class="bg-gray-400 hover:bg-gray-500 text-white font-semibold py-2 px-6 rounded-lg shadow-lg">Voltar</button>
                 </div>
-                <div id="etapasApontamento" class="space-y-6">
-                    <!-- Etapas da ordem serão geradas aqui -->
-                </div>
+                <div id="etapasApontamento" class="space-y-6"></div>
             </div>
-            
             <div id="listasDeOrdens" class="space-y-6">
-                <div>
-                    <h3 class="text-xl font-semibold text-gray-700">Ordens Em Andamento</h3>
-                    <ul id="ordensEmAndamentoUl" class="list-none space-y-2"></ul>
+                <div class="flex justify-end mb-4">
+                    <button id="exportarBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md">Exportar Histórico (CSV)</button>
                 </div>
-                <div>
-                    <h3 class="text-xl font-semibold text-gray-700">Ordens Concluídas</h3>
-                    <ul id="ordensConcluidasUl" class="list-none space-y-2"></ul>
-                </div>
+                <div><h3 class="text-xl font-semibold text-gray-700">Ordens Em Andamento</h3><ul id="ordensEmAndamentoUl" class="list-none space-y-2"></ul></div>
+                <div><h3 class="text-xl font-semibold text-gray-700">Ordens Concluídas</h3><ul id="ordensConcluidasUl" class="list-none space-y-2"></ul></div>
             </div>
         </div>
 
-        <!-- Modal para Justificativa de Pausa -->
-        <div id="justificativaModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
-            <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md border border-gray-200">
-                <h3 class="text-lg font-bold mb-4">Justificativa da Pausa</h3>
-                <textarea id="justificativaInput" rows="4" class="block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Motivo da pausa"></textarea>
-                <div class="mt-4 flex justify-end space-x-2">
-                    <button id="salvarJustificativaBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg">Salvar</button>
-                    <button id="cancelarJustificativaBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancelar</button>
+        <div id="dashboardTab" class="tab-content">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800 text-center">Dashboard de Produtividade</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="subetapaFilter" class="block text-sm font-medium text-gray-700">Analisar Produtividade por Sub-etapa</label>
+                    <select id="subetapaFilter" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
+                        <option value="">Selecione uma sub-etapa...</option>
+                    </select>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg border">
+                     <canvas id="produtividadeChart"></canvas>
                 </div>
             </div>
         </div>
         
-        <!-- Modal para preencher responsável -->
-        <div id="responsavelModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
-            <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md border border-gray-200">
-                <h3 class="text-lg font-bold mb-4">Responsável pela Etapa</h3>
-                <input type="text" id="responsavelInput" class="block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Nome do operador">
-                <div class="mt-4 flex justify-end space-x-2">
-                    <button id="salvarResponsavelBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg">Salvar</button>
-                    <button id="cancelarResponsavelBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancelar</button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Modal de Aviso -->
-        <div id="avisoModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
-            <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm border border-gray-200 text-center">
-                <p id="avisoText" class="text-lg mb-4 text-gray-700">--</p>
-                <button id="fecharAvisoBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg">OK</button>
-            </div>
-        </div>
+        <div id="justificativaModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50"><div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md border border-gray-200"><h3 class="text-lg font-bold mb-4">Justificativa da Pausa</h3><textarea id="justificativaInput" rows="4" class="block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Motivo da pausa"></textarea><div class="mt-4 flex justify-end space-x-2"><button id="salvarJustificativaBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg">Salvar</button><button id="cancelarJustificativaBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancelar</button></div></div></div>
+        <div id="responsavelModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50"><div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md border border-gray-200"><h3 class="text-lg font-bold mb-4">Responsável pela Etapa</h3><input type="text" id="responsavelInput" class="block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Nome do operador"><div class="mt-4 flex justify-end space-x-2"><button id="salvarResponsavelBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg">Salvar</button><button id="cancelarResponsavelBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancelar</button></div></div></div>
+        <div id="avisoModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50"><div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm border border-gray-200 text-center"><p id="avisoText" class="text-lg mb-4 text-gray-700">--</p><button id="fecharAvisoBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg">OK</button></div></div>
     </div>
 
     <script type="module">
-        const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, collection, addDoc, onSnapshot, query, getDocs, Timestamp, where, doc, getDoc, setDoc, orderBy } = window.firebase;
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, getDocs, Timestamp, where, doc, getDoc, setDoc, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Elementos de navegação
-        const cadastroTabBtn = document.getElementById('cadastroTabBtn');
-        const apontamentoTabBtn = document.getElementById('apontamentoTabBtn');
-        const historicoTabBtn = document.getElementById('historicoTabBtn');
-        const cadastroTab = document.getElementById('cadastroTab');
-        const apontamentoTab = document.getElementById('apontamentoTab');
-        const historicoTab = document.getElementById('historicoTab');
+        const elements = {
+            userIdDisplay: document.getElementById('userIdDisplay'),
+            cadastroTabBtn: document.getElementById('cadastroTabBtn'),
+            apontamentoTabBtn: document.getElementById('apontamentoTabBtn'),
+            historicoTabBtn: document.getElementById('historicoTabBtn'),
+            dashboardTabBtn: document.getElementById('dashboardTabBtn'),
+            codigoProdutoCadastroInput: document.getElementById('codigoProdutoCadastro'),
+            etapasContainer: document.getElementById('etapasContainer'),
+            addEtapaBtn: document.getElementById('addEtapaBtn'),
+            salvarProdutoBtn: document.getElementById('salvarProdutoBtn'),
+            listaProdutosCadastradosUl: document.getElementById('listaProdutosCadastrados'),
+            numeroOrdemInput: document.getElementById('numeroOrdem'),
+            produtoApontamentoSelect: document.getElementById('produtoApontamento'),
+            quantidadeApontamentoInput: document.getElementById('quantidadeApontamento'),
+            abrirOrdemBtn: document.getElementById('abrirOrdemBtn'),
+            ordemDetalhesDiv: document.getElementById('ordemDetalhes'),
+            ordemNumeroDisplay: document.getElementById('ordemNumeroDisplay'),
+            finalizarOrdemBtn: document.getElementById('finalizarOrdemBtn'),
+            etapasApontamentoDiv: document.getElementById('etapasApontamento'),
+            ordensEmAndamentoUl: document.getElementById('ordensEmAndamentoUl'),
+            ordensConcluidasUl: document.getElementById('ordensConcluidasUl'),
+            listasDeOrdensDiv: document.getElementById('listasDeOrdens'),
+            voltarBtn: document.getElementById('voltarBtn'),
+            justificativaModal: document.getElementById('justificativaModal'),
+            justificativaInput: document.getElementById('justificativaInput'),
+            salvarJustificativaBtn: document.getElementById('salvarJustificativaBtn'),
+            cancelarJustificativaBtn: document.getElementById('cancelarJustificativaBtn'),
+            responsavelModal: document.getElementById('responsavelModal'),
+            responsavelInput: document.getElementById('responsavelInput'),
+            salvarResponsavelBtn: document.getElementById('salvarResponsavelBtn'),
+            cancelarResponsavelBtn: document.getElementById('cancelarResponsavelBtn'),
+            avisoModal: document.getElementById('avisoModal'),
+            avisoText: document.getElementById('avisoText'),
+            fecharAvisoBtn: document.getElementById('fecharAvisoBtn'),
+            exportarBtn: document.getElementById('exportarBtn'),
+            subetapaFilter: document.getElementById('subetapaFilter'),
+        };
 
-        // Elementos do cadastro
-        const codigoProdutoCadastroInput = document.getElementById('codigoProdutoCadastro');
-        const etapasContainer = document.getElementById('etapasContainer');
-        const addEtapaBtn = document.getElementById('addEtapaBtn');
-        const salvarProdutoBtn = document.getElementById('salvarProdutoBtn');
-        const listaProdutosCadastradosUl = document.getElementById('listaProdutosCadastrados');
-
-        // Elementos do apontamento
-        const numeroOrdemInput = document.getElementById('numeroOrdem');
-        const produtoApontamentoSelect = document.getElementById('produtoApontamento');
-        const quantidadeApontamentoInput = document.getElementById('quantidadeApontamento');
-        const abrirOrdemBtn = document.getElementById('abrirOrdemBtn');
-        const ordemDetalhesDiv = document.getElementById('ordemDetalhes');
-        const ordemNumeroDisplay = document.getElementById('ordemNumeroDisplay');
-        const finalizarOrdemBtn = document.getElementById('finalizarOrdemBtn');
-        const etapasApontamentoDiv = document.getElementById('etapasApontamento');
-
-        // Elementos do histórico
-        const ordensEmAndamentoUl = document.getElementById('ordensEmAndamentoUl');
-        const ordensConcluidasUl = document.getElementById('ordensConcluidasUl');
-        const listasDeOrdensDiv = document.getElementById('listasDeOrdens');
-        const voltarBtn = document.getElementById('voltarBtn');
-
-        // Elementos de controle
-        const userIdDisplay = document.getElementById('userIdDisplay');
-        const justificativaModal = document.getElementById('justificativaModal');
-        const justificativaInput = document.getElementById('justificativaInput');
-        const salvarJustificativaBtn = document.getElementById('salvarJustificativaBtn');
-        const cancelarJustificativaBtn = document.getElementById('cancelarJustificativaBtn');
-        const responsavelModal = document.getElementById('responsavelModal');
-        const responsavelInput = document.getElementById('responsavelInput');
-        const salvarResponsavelBtn = document.getElementById('salvarResponsavelBtn');
-        const cancelarResponsavelBtn = document.getElementById('cancelarResponsavelBtn');
-        const avisoModal = document.getElementById('avisoModal');
-        const avisoText = document.getElementById('avisoText');
-        const fecharAvisoBtn = document.getElementById('fecharAvisoBtn');
-
-        // Variáveis de estado
         let db, auth, userId;
         let ordemProducaoAtual = {};
         let currentPauseContext = null;
         let currentStartContext = null;
         let currentEditingProductId = null;
         let currentOrderDocId = null;
+        let allOrdersData = [];
+        let productivityChart = null;
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = {
-          apiKey: "AIzaSyBDb1E_wHtmISvNG31RhlmP979890X7nxY",
-          authDomain: "apontamentoproducao-f141e.firebaseapp.com",
-          projectId: "apontamentoproducao-f141e",
-          storageBucket: "apontamentoproducao-f141e.firebasestorage.app",
-          messagingSenderId: "516590802933",
-          appId: "1:516590802933:web:756d1e76d981e51604b2bc",
-          measurementId: "G-3ZF5SLW87S"
+        const firebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config) ? JSON.parse(__firebase_config) : {
+            apiKey: "AIzaSyBDb1E_wHtmISvNG31RhlmP979890X7nxY",
+            authDomain: "apontamentoproducao-f141e.firebaseapp.com",
+            projectId: "apontamentoproducao-f141e",
+            storageBucket: "apontamentoproducao-f141e.appspot.com",
+            messagingSenderId: "516590802933",
+            appId: "1:516590802933:web:756d1e76d981e51604b2bc"
         };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        // Funções de utilidade
+        
         function showAviso(message) {
-            avisoText.textContent = message;
-            avisoModal.classList.remove('hidden');
+            elements.avisoText.textContent = message;
+            elements.avisoModal.classList.remove('hidden');
         }
+
         function formatarTempo(ms) {
-            const segundos = Math.floor(ms / 1000);
-            const minutos = Math.floor(segundos / 60);
-            const horas = Math.floor(minutos / 60);
-            const s = segundos % 60;
-            const m = minutos % 60;
-            const h = horas % 24;
-            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            if (ms === null || isNaN(ms) || ms < 0) return '00:00:00';
+            const s = Math.floor(ms / 1000), m = Math.floor(s / 60), h = Math.floor(m / 60);
+            return `${String(h).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
         }
+
         function checkAllSubetapasConcluded(etapa) {
-            return etapa.subetapas.every(subetapa => subetapa.fim !== null);
+            if (!etapa || !etapa.subetapas) return false;
+            return etapa.subetapas.every(sub => sub.fim !== null);
         }
+
         function checkAllEtapasConcluded(ordem) {
+            if (!ordem || !ordem.etapas) return false;
             return ordem.etapas.every(etapa => etapa.concluida);
         }
+        
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(function(tab) {
+                tab.classList.remove('active');
+            });
+            const buttonThemes = {
+                cadastroTabBtn: { active: ['bg-indigo-600', 'text-white'], inactive: ['bg-indigo-100', 'text-indigo-700', 'hover:bg-indigo-200'] },
+                apontamentoTabBtn: { active: ['bg-amber-500', 'text-white'], inactive: ['bg-amber-100', 'text-amber-700', 'hover:bg-amber-200'] },
+                historicoTabBtn: { active: ['bg-sky-600', 'text-white'], inactive: ['bg-sky-100', 'text-sky-700', 'hover:bg-sky-200'] },
+                dashboardTabBtn: { active: ['bg-emerald-600', 'text-white'], inactive: ['bg-emerald-100', 'text-emerald-700', 'hover:bg-emerald-200'] }
+            };
+            Object.keys(buttonThemes).forEach(function(btnId) {
+                const button = document.getElementById(btnId);
+                const theme = buttonThemes[btnId];
+                button.classList.remove(...theme.active);
+                button.classList.add(...theme.inactive);
+            });
+            const selectedButtonId = `${tabId}Btn`;
+            const selectedButton = document.getElementById(selectedButtonId);
+            const selectedTheme = buttonThemes[selectedButtonId];
+            document.getElementById(tabId).classList.add('active');
+            selectedButton.classList.remove(...selectedTheme.inactive);
+            selectedButton.classList.add(...selectedTheme.active);
+        }
 
-        // Funções do Firebase
+        function createEtapaField(nome = '') {
+            const etapaDiv = document.createElement('div');
+            etapaDiv.className = 'etapa p-4 border rounded-lg bg-gray-50 space-y-2';
+            etapaDiv.innerHTML = `<div><label class="block text-sm font-medium text-gray-700">Nome da Etapa</label><input type="text" class="etapa-nome mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Ex: Montagem" value="${nome}"></div><div class="subetapas-container pl-4 space-y-2"></div><div class="flex space-x-2"><button type="button" class="add-subetapa-btn flex-1 bg-blue-400 hover:bg-blue-500 text-white font-semibold py-1 px-2 rounded-md text-sm shadow-sm">Adicionar Sub-etapa</button><button type="button" class="remove-etapa-btn flex-1 bg-red-400 hover:bg-red-500 text-white font-semibold py-1 px-2 rounded-md text-sm shadow-sm">Remover Etapa</button></div>`;
+            elements.etapasContainer.appendChild(etapaDiv);
+            etapaDiv.querySelector('.add-subetapa-btn').addEventListener('click', function() {
+                createSubetapaField(etapaDiv.querySelector('.subetapas-container'));
+            });
+            etapaDiv.querySelector('.remove-etapa-btn').addEventListener('click', function() {
+                etapaDiv.remove();
+            });
+            return etapaDiv;
+        }
+
+        function createSubetapaField(container, nome = '') {
+            const subetapaDiv = document.createElement('div');
+            subetapaDiv.className = 'subetapa flex items-center space-x-2';
+            subetapaDiv.innerHTML = `<input type="text" class="subetapa-nome flex-1 block w-full rounded-md border-gray-300 shadow-sm p-2 text-sm" placeholder="Nome da Sub-etapa" value="${nome}"><button type="button" class="remove-subetapa-btn bg-red-400 hover:bg-red-500 text-white font-semibold py-1 px-2 rounded-md text-sm shadow-sm">Remover</button>`;
+            container.appendChild(subetapaDiv);
+            subetapaDiv.querySelector('.remove-subetapa-btn').addEventListener('click', function() {
+                subetapaDiv.remove();
+            });
+        }
+        
+        function renderizarOrdem() {
+            elements.etapasApontamentoDiv.innerHTML = '';
+            if (!ordemProducaoAtual || !ordemProducaoAtual.etapas) return;
+            elements.ordemNumeroDisplay.textContent = ordemProducaoAtual.numero;
+            
+            ordemProducaoAtual.etapas.forEach(function(etapa, index) {
+                const etapaDiv = document.createElement('div');
+                etapaDiv.className = `etapa-card p-4 border rounded-lg bg-gray-50 space-y-3 ${etapa.concluida ? 'etapa-concluida' : ''}`;
+                etapaDiv.dataset.index = index;
+                etapaDiv.innerHTML = `<div class="flex justify-between items-center"><h4 class="text-lg font-bold text-gray-800">${etapa.nome}</h4><div class="text-sm text-right"><p class="responsavel-etapa-display text-gray-600">Responsável: ${etapa.responsavel || '--'}</p><p class="text-gray-600">Tempo Líquido: <span class="font-semibold">${formatarTempo(etapa.tempoLiquido)}</span></p></div></div><div class="subetapas-apontamento-container pl-4 space-y-2 border-l-2 border-gray-200"></div>`;
+                const subetapasContainer = etapaDiv.querySelector('.subetapas-apontamento-container');
+                
+                etapa.subetapas.forEach(function(subetapa, subIndex) {
+                    const subetapaDiv = document.createElement('div');
+                    subetapaDiv.className = `subetapa-card p-3 bg-white rounded-md shadow-sm border ${subetapa.fim ? 'etapa-concluida' : ''}`;
+                    subetapaDiv.dataset.index = index; 
+                    subetapaDiv.dataset.subIndex = subIndex;
+                    const isStarted = subetapa.inicio !== null;
+                    const isFinished = subetapa.fim !== null;
+                    const isPaused = subetapa.emPausa;
+                    const canStart = !isStarted;
+                    const canInteract = !ordemProducaoAtual.concluida;
+
+                    subetapaDiv.innerHTML = `<div class="flex justify-between items-center mb-2"><p class="font-semibold">${subetapa.nome}</p><p class="responsavel-subetapa-display text-sm text-gray-500">Responsável: ${subetapa.responsavel || '--'}</p></div><div class="text-xs text-gray-500 mb-3 grid grid-cols-2 gap-x-2"><p>Tempo Líquido: <span class="font-mono">${formatarTempo(subetapa.tempoLiquido)}</span></p><p>Produtividade: <span class="font-mono">${subetapa.produtividade ? subetapa.produtividade.toFixed(2) : '--'} pçs/h</span></p></div><div class="flex space-x-2"><button class="iniciar-btn flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!canStart || isFinished || !canInteract ? 'disabled' : ''}>Iniciar</button><button class="pausar-btn flex-1 ${isPaused ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-500 hover:bg-gray-600'} text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!isStarted || isFinished || !canInteract ? 'disabled' : ''}>${isPaused ? 'Continuar' : 'Pausar'}</button><button class="concluir-btn flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!isStarted || isFinished || isPaused || !canInteract ? 'disabled' : ''}>Concluir</button></div>`;
+                    subetapasContainer.appendChild(subetapaDiv);
+                });
+                elements.etapasApontamentoDiv.appendChild(etapaDiv);
+            });
+            elements.etapasApontamentoDiv.querySelectorAll('.iniciar-btn').forEach(function(btn) { btn.addEventListener('click', handleStart); });
+            elements.etapasApontamentoDiv.querySelectorAll('.pausar-btn').forEach(function(btn) { btn.addEventListener('click', handlePause); });
+            elements.etapasApontamentoDiv.querySelectorAll('.concluir-btn').forEach(function(btn) { btn.addEventListener('click', handleConclude); });
+        }
+        
+        async function updateOrderInFirestore() {
+            if (!currentOrderDocId) return;
+            const docRef = doc(db, `artifacts/${appId}/public/data/ordens`, currentOrderDocId);
+            await setDoc(docRef, ordemProducaoAtual).catch(function(e) { console.error(e); showAviso("Erro ao salvar o progresso da ordem."); });
+        }
+
+        function handleStart(event) {
+            const parent = event.target.closest('.subetapa-card');
+            currentStartContext = { index: parseInt(parent.dataset.index), subIndex: parseInt(parent.dataset.subIndex) };
+            elements.responsavelModal.classList.remove('hidden');
+            elements.responsavelInput.value = '';
+            elements.responsavelInput.focus();
+        }
+
+        async function handlePause(event) {
+            const parent = event.target.closest('.subetapa-card');
+            const { index, subIndex } = parent.dataset;
+            const sub = ordemProducaoAtual.etapas[index].subetapas[subIndex];
+            if (sub.emPausa) {
+                const now = Date.now();
+                const lastPause = sub.pausas[sub.pausas.length - 1];
+                lastPause.fim = now;
+                sub.tempoTotalPausas += now - lastPause.inicio;
+                sub.emPausa = false;
+            } else {
+                currentPauseContext = { index, subIndex };
+                elements.justificativaModal.classList.remove('hidden');
+                elements.justificativaInput.value = '';
+                elements.justificativaInput.focus();
+                return;
+            }
+            await updateOrderInFirestore();
+            renderizarOrdem();
+        }
+
+        async function handleConclude(event) {
+            const parent = event.target.closest('.subetapa-card');
+            const { index, subIndex } = parent.dataset;
+            const sub = ordemProducaoAtual.etapas[index].subetapas[subIndex];
+            const etapa = ordemProducaoAtual.etapas[index];
+            if (sub.emPausa) return showAviso("Conclua a pausa antes de finalizar.");
+            const now = Timestamp.now();
+            sub.fim = now;
+            if (sub.inicio && typeof sub.inicio.toMillis === 'function') {
+                 sub.tempoLiquido = now.toMillis() - sub.inicio.toMillis() - sub.tempoTotalPausas;
+                 const tempoEmHoras = sub.tempoLiquido / (1000 * 60 * 60);
+                 sub.produtividade = tempoEmHoras > 0 ? ordemProducaoAtual.quantidade / tempoEmHoras : 0;
+            } else {
+                sub.tempoLiquido = 0; 
+                sub.produtividade = 0;
+            }
+            showAviso(`Sub-etapa "${sub.nome}" concluída!`);
+            if (checkAllSubetapasConcluded(etapa)) {
+                etapa.fim = now;
+                etapa.concluida = true;
+                etapa.tempoLiquido = etapa.subetapas.reduce(function(acc, s) { return acc + (s.tempoLiquido || 0); }, 0);
+                showAviso(`Etapa "${etapa.nome}" concluída!`);
+                if (checkAllEtapasConcluded(ordemProducaoAtual)) {
+                    elements.finalizarOrdemBtn.disabled = false;
+                    await handleFinalizeMain(true);
+                    return;
+                }
+            }
+            await updateOrderInFirestore();
+            renderizarOrdem();
+        }
+        
+        async function handleFinalizeMain(isAutomatic = false) {
+            if (ordemProducaoAtual.concluida || !checkAllEtapasConcluded(ordemProducaoAtual)) return;
+            ordemProducaoAtual.dataFim = Timestamp.now();
+            ordemProducaoAtual.concluida = true;
+            await updateOrderInFirestore();
+            showAviso(`Ordem finalizada ${isAutomatic ? 'automaticamente' : ''} com sucesso!`);
+            elements.voltarBtn.click();
+        }
+        
+        function carregarOrdemParaApontamento(orderId, orderData) {
+            currentOrderDocId = orderId;
+            ordemProducaoAtual = orderData;
+            switchTab('historicoTab');
+            elements.listasDeOrdensDiv.classList.add('hidden');
+            elements.ordemDetalhesDiv.classList.remove('hidden');
+            elements.finalizarOrdemBtn.disabled = ordemProducaoAtual.concluida || !checkAllEtapasConcluded(ordemProducaoAtual);
+            renderizarOrdem();
+        }
+
+        function fillFormForEditing(id, data) {
+            currentEditingProductId = id;
+            elements.codigoProdutoCadastroInput.value = data.codigo;
+            elements.etapasContainer.innerHTML = '';
+            if (data.etapas && Array.isArray(data.etapas)) {
+                data.etapas.forEach(function(etapa) {
+                    const etapaDiv = createEtapaField(etapa.nome);
+                    const subContainer = etapaDiv.querySelector('.subetapas-container');
+                    if (etapa.subetapas && Array.isArray(etapa.subetapas)) {
+                        etapa.subetapas.forEach(function(sub) {
+                            createSubetapaField(subContainer, sub.nome);
+                        });
+                    }
+                });
+            }
+            elements.salvarProdutoBtn.textContent = 'Atualizar Produto';
+            switchTab('cadastroTab');
+        }
+
+        async function exportarParaCSV() {
+            showAviso("A gerar o ficheiro CSV...");
+            try {
+                const ordensRef = collection(db, `artifacts/${appId}/public/data/ordens`);
+                const snapshot = await getDocs(query(ordensRef, orderBy("numero", "desc")));
+                
+                if (snapshot.empty) {
+                    return showAviso("Não há dados para exportar.");
+                }
+
+                let maxPausas = 0;
+                snapshot.forEach(doc => {
+                    const ordem = doc.data();
+                    if (ordem.etapas && Array.isArray(ordem.etapas)) {
+                        ordem.etapas.forEach(etapa => {
+                            if (etapa.subetapas && Array.isArray(etapa.subetapas)) {
+                                etapa.subetapas.forEach(sub => {
+                                    if (sub.pausas && sub.pausas.length > maxPausas) {
+                                        maxPausas = sub.pausas.length;
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+
+                let csvHeader = "Ordem,Produto,Qtd Total,Status,Etapa,Subetapa,Responsavel,Data Inicio,Hora Inicio,Data Fim,Hora Fim,Tempo Liquido,Tempo Total Pausa,Produtividade (pcs/h)";
+                for (let i = 1; i <= maxPausas; i++) {
+                    csvHeader += `,Motivo Pausa ${i},Duracao Pausa ${i}`;
+                }
+                csvHeader += "\n";
+
+                let csvContent = csvHeader;
+                
+                snapshot.forEach(function(doc) {
+                    const ordem = doc.data();
+                    const status = ordem.concluida ? "Concluída" : "Em Andamento";
+
+                    if (ordem.etapas && Array.isArray(ordem.etapas)) {
+                        ordem.etapas.forEach(function(etapa) {
+                            if (etapa.subetapas && Array.isArray(etapa.subetapas)) {
+                                etapa.subetapas.forEach(function(sub) {
+                                    const dataInicio = (sub.inicio && typeof sub.inicio.toDate === 'function') ? sub.inicio.toDate() : null;
+                                    const dataFim = (sub.fim && typeof sub.fim.toDate === 'function') ? sub.fim.toDate() : null;
+
+                                    const dataInicioStr = dataInicio ? dataInicio.toLocaleDateString('pt-BR') : 'N/A';
+                                    const horaInicioStr = dataInicio ? dataInicio.toLocaleTimeString('pt-BR') : 'N/A';
+                                    const dataFimStr = dataFim ? dataFim.toLocaleDateString('pt-BR') : 'N/A';
+                                    const horaFimStr = dataFim ? dataFim.toLocaleTimeString('pt-BR') : 'N/A';
+                                    
+                                    const tempo = formatarTempo(sub.tempoLiquido || 0);
+                                    const tempoPausaTotal = formatarTempo(sub.tempoTotalPausas || 0);
+                                    const prod = (typeof sub.produtividade === 'number') ? sub.produtividade.toFixed(2) : '0.00';
+                                    
+                                    let pausasCsv = [];
+                                    if (sub.pausas && Array.isArray(sub.pausas)) {
+                                        sub.pausas.forEach(function(p) {
+                                            const duracao = (p.fim && p.inicio) ? formatarTempo(p.fim - p.inicio) : 'N/A';
+                                            pausasCsv.push(`"${p.justificativa.replace(/"/g, '""')}"`);
+                                            pausasCsv.push(`"${duracao}"`);
+                                        });
+                                    }
+                                    
+                                    while (pausasCsv.length < maxPausas * 2) {
+                                        pausasCsv.push('""', '""');
+                                    }
+                                    
+                                    const row = [
+                                        `"${ordem.numero}"`, `"${ordem.produto}"`, ordem.quantidade, `"${status}"`,
+                                        `"${etapa.nome}"`, `"${sub.nome}"`, `"${sub.responsavel || ''}"`,
+                                        `"${dataInicioStr}"`, `"${horaInicioStr}"`, `"${dataFimStr}"`, `"${horaFimStr}"`,
+                                        `"${tempo}"`, `"${tempoPausaTotal}"`, `"${prod}"`,
+                                        ...pausasCsv
+                                    ].join(",");
+                                    csvContent += row + "\n";
+                                });
+                            }
+                        });
+                    }
+                });
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `historico_producao_${new Date().toISOString().slice(0,10)}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showAviso("Exportação concluída!");
+
+            } catch (e) {
+                console.error("Erro ao exportar CSV:", e);
+                showAviso("Ocorreu um erro ao exportar os dados.");
+            }
+        }
+        
+        function processAndDisplayDashboardData() {
+            let productivityData = {};
+            const subetapaSet = new Set();
+
+            allOrdersData.forEach(function(ordem) {
+                if (!ordem.concluida || !ordem.etapas || !Array.isArray(ordem.etapas)) return;
+                
+                ordem.etapas.forEach(function(etapa) {
+                    if (!etapa.subetapas || !Array.isArray(etapa.subetapas)) return;
+
+                    etapa.subetapas.forEach(function(sub) {
+                        if (sub.fim && sub.responsavel) {
+                            const subetapaNome = sub.nome.trim();
+                            const responsavel = sub.responsavel.trim();
+                            
+                            subetapaSet.add(subetapaNome);
+
+                            if (!productivityData[subetapaNome]) {
+                                productivityData[subetapaNome] = {};
+                            }
+                            if (!productivityData[subetapaNome][responsavel]) {
+                                productivityData[subetapaNome][responsavel] = { totalPcsHora: 0, count: 0 };
+                            }
+
+                            productivityData[subetapaNome][responsavel].totalPcsHora += sub.produtividade || 0;
+                            productivityData[subetapaNome][responsavel].count++;
+                        }
+                    });
+                });
+            });
+
+            const filter = elements.subetapaFilter;
+            const currentVal = filter.value;
+            filter.innerHTML = '<option value="">Selecione uma sub-etapa...</option>';
+            [...subetapaSet].sort().forEach(function(subetapa) {
+                const option = document.createElement('option');
+                option.value = subetapa;
+                option.textContent = subetapa;
+                filter.appendChild(option);
+            });
+            
+            if (currentVal && subetapaSet.has(currentVal)) {
+                 filter.value = currentVal;
+            }
+           
+            if (filter.value) {
+                updateDashboardChart(filter.value, productivityData);
+            } else {
+                updateDashboardChart(null, null); 
+            }
+        }
+
+        function updateDashboardChart(subetapaNome, productivityData) {
+            const ctx = document.getElementById('produtividadeChart').getContext('2d');
+            
+            if (productivityChart) {
+                productivityChart.destroy();
+            }
+
+            if (!subetapaNome || !productivityData[subetapaNome]) {
+                if (ctx) { 
+                    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                }
+                return;
+            }
+
+            const data = productivityData[subetapaNome];
+            const labels = Object.keys(data).sort();
+            const averages = labels.map(function(label) {
+                return data[label].totalPcsHora / data[label].count;
+            });
+
+            productivityChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `Produtividade Média (pçs/h) para "${subetapaNome}"`,
+                        data: averages,
+                        backgroundColor: 'rgba(79, 70, 229, 0.8)',
+                        borderColor: 'rgba(79, 70, 229, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Peças por Hora' }
+                        }
+                    },
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+
+        function setupFirebaseListeners() {
+            if (!userId) return;
+            
+            const produtosRef = collection(db, `artifacts/${appId}/public/data/produtos`);
+            onSnapshot(query(produtosRef, orderBy("codigo")), function(snapshot) {
+                elements.listaProdutosCadastradosUl.innerHTML = '';
+                elements.produtoApontamentoSelect.innerHTML = '<option value="">Selecione um produto...</option>';
+                snapshot.forEach(function(doc) {
+                    const data = doc.data();
+                    const li = document.createElement('li');
+                    li.className = 'product-item';
+                    li.textContent = data.codigo;
+                    li.addEventListener('click', function() {
+                        fillFormForEditing(doc.id, data);
+                    });
+                    elements.listaProdutosCadastradosUl.appendChild(li);
+                    const option = document.createElement('option');
+                    option.value = doc.id;
+                    option.textContent = data.codigo;
+                    elements.produtoApontamentoSelect.appendChild(option);
+                });
+            });
+            
+            const ordensRef = collection(db, `artifacts/${appId}/public/data/ordens`);
+            onSnapshot(query(ordensRef, orderBy("numero", "desc")), function(snapshot) {
+                elements.ordensEmAndamentoUl.innerHTML = '';
+                elements.ordensConcluidasUl.innerHTML = '';
+                const orders = [];
+                snapshot.forEach(function(doc) {
+                    const data = doc.data();
+                    orders.push(data); 
+                    const li = document.createElement('li');
+                    li.className = 'p-4 bg-gray-100 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-200';
+                    li.addEventListener('click', function() {
+                        carregarOrdemParaApontamento(doc.id, data);
+                    });
+                    li.innerHTML = `<p class="font-semibold text-gray-800">Ordem #${data.numero}</p><p class="text-sm text-gray-600"><strong>Produto:</strong> ${data.produto}</p><p class="text-sm text-gray-600"><strong>Quantidade:</strong> ${data.quantidade}</p><p class="text-sm text-gray-600"><strong>Início:</strong> ${data.dataInicio ? data.dataInicio.toDate().toLocaleString('pt-BR') : '--'}</p><p class="text-sm text-gray-600"><strong>Fim:</strong> ${data.dataFim ? data.dataFim.toDate().toLocaleString('pt-BR') : '--'}</p><p class="text-sm text-gray-600"><strong>Status:</strong> ${data.concluida ? '<span class="font-bold text-green-600">Concluída</span>' : '<span class="font-bold text-blue-600">Em Andamento</span>'}</p>`;
+                    if (data.concluida) {
+                        elements.ordensConcluidasUl.appendChild(li);
+                    } else {
+                        elements.ordensEmAndamentoUl.appendChild(li);
+                    }
+                });
+                allOrdersData = orders;
+                processAndDisplayDashboardData();
+            });
+        }
+        
         async function initializeFirebase() {
             try {
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                onAuthStateChanged(auth, (user) => {
+                
+                onAuthStateChanged(auth, function(user) {
                     if (user) {
                         userId = user.uid;
-                        userIdDisplay.textContent = userId;
-                        setupListeners();
+                        elements.userIdDisplay.textContent = userId;
+                        setupFirebaseListeners();
                     } else {
-                        userIdDisplay.textContent = 'Não autenticado';
+                        if (initialAuthToken) {
+                            signInWithCustomToken(auth, initialAuthToken).catch(function(err) {
+                                console.error("Falha no login com token, tentando anônimo:", err);
+                                signInAnonymously(auth);
+                            });
+                        } else {
+                            signInAnonymously(auth);
+                        }
                     }
                 });
             } catch (error) {
-                console.error("Erro ao inicializar Firebase ou autenticar:", error);
-                showAviso("Erro ao conectar com o banco de dados. Por favor, tente novamente.");
+                console.error("Erro ao inicializar Firebase:", error);
+                showAviso("Erro ao conectar com o banco de dados.");
             }
         }
         
-        async function setupListeners() {
-            if (!userId) return;
+        function bindEventListeners() {
+            elements.cadastroTabBtn.addEventListener('click', function() { switchTab('cadastroTab'); });
+            elements.apontamentoTabBtn.addEventListener('click', function() { switchTab('apontamentoTab'); });
+            elements.historicoTabBtn.addEventListener('click', function() { switchTab('historicoTab'); });
+            elements.dashboardTabBtn.addEventListener('click', function() { switchTab('dashboardTab'); });
+            elements.addEtapaBtn.addEventListener('click', createEtapaField);
+            elements.fecharAvisoBtn.addEventListener('click', function() { elements.avisoModal.classList.add('hidden'); });
+            elements.exportarBtn.addEventListener('click', exportarParaCSV);
+            elements.subetapaFilter.addEventListener('change', function() { processAndDisplayDashboardData(); });
             
-            // Listener para a lista de produtos cadastrados
-            const produtosRef = collection(db, `artifacts/${appId}/public/data/produtos`);
-            onSnapshot(produtosRef, (snapshot) => {
-                listaProdutosCadastradosUl.innerHTML = '';
-                produtoApontamentoSelect.innerHTML = '<option value="">Selecione um produto...</option>';
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    const li = document.createElement('li');
-                    li.classList.add('product-item');
-                    li.textContent = data.codigo;
-                    li.dataset.id = doc.id;
-                    li.addEventListener('click', () => {
-                        fillFormForEditing(doc.id, data);
+            elements.voltarBtn.addEventListener('click', function() {
+                elements.ordemDetalhesDiv.classList.add('hidden');
+                elements.listasDeOrdensDiv.classList.remove('hidden');
+                currentOrderDocId = null;
+                ordemProducaoAtual = {};
+            });
+            
+            elements.finalizarOrdemBtn.addEventListener('click', function() { handleFinalizeMain(false); });
+            elements.cancelarJustificativaBtn.addEventListener('click', function() { elements.justificativaModal.classList.add('hidden'); });
+            elements.cancelarResponsavelBtn.addEventListener('click', function() { elements.responsavelModal.classList.add('hidden'); });
+            
+            elements.salvarProdutoBtn.addEventListener('click', async function() {
+                const codigo = elements.codigoProdutoCadastroInput.value.trim();
+                if (!codigo) return showAviso("O código do produto é obrigatório.");
+                
+                const etapas = [];
+                let hasError = false;
+                elements.etapasContainer.querySelectorAll('.etapa').forEach(function(el) {
+                    const nomeEtapa = el.querySelector('.etapa-nome').value.trim();
+                    if (!nomeEtapa) hasError = true;
+                    const subetapas = [];
+                    el.querySelectorAll('.subetapa-nome').forEach(function(subEl) {
+                        const nomeSub = subEl.value.trim();
+                        if (!nomeSub) hasError = true;
+                        subetapas.push({ nome: nomeSub });
                     });
-                    listaProdutosCadastradasUl.appendChild(li);
-
-                    const option = document.createElement('option');
-                    option.value = doc.id;
-                    option.textContent = data.codigo;
-                    produtoApontamentoSelect.appendChild(option);
+                    etapas.push({ nome: nomeEtapa, subetapas: subetapas });
                 });
-            });
-            
-            // Listener para o histórico de ordens
-            const ordensRef = collection(db, `artifacts/${appId}/public/data/ordens`);
-            onSnapshot(ordensRef, (snapshot) => {
-                ordensEmAndamentoUl.innerHTML = '';
-                ordensConcluidasUl.innerHTML = '';
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    const li = document.createElement('li');
-                    li.classList.add('p-4', 'bg-gray-100', 'rounded-lg', 'border', 'border-gray-200');
-                    if (!data.concluida) {
-                        li.classList.add('cursor-pointer', 'hover:bg-gray-200');
-                        li.addEventListener('click', () => {
-                            carregarOrdemParaApontamento(doc.id, data);
-                        });
-                    }
-                    li.innerHTML = `
-                        <p class="font-semibold text-gray-800">Ordem #${data.numero}</p>
-                        <p class="text-sm text-gray-600"><strong>Produto:</strong> ${data.produto}</p>
-                        <p class="text-sm text-gray-600"><strong>Quantidade:</strong> ${data.quantidade}</p>
-                        <p class="text-sm text-gray-600"><strong>Início:</strong> ${data.dataInicio ? data.dataInicio.toDate().toLocaleString('pt-BR') : '--'}</p>
-                        <p class="text-sm text-gray-600"><strong>Fim:</strong> ${data.dataFim ? data.dataFim.toDate().toLocaleString('pt-BR') : '--'}</p>
-                        <p class="text-sm text-gray-600"><strong>Status:</strong> ${data.concluida ? 'Concluída' : 'Em Andamento'}</p>
-                    `;
-                    if (data.concluida) {
-                        ordensConcluidasUl.appendChild(li);
+
+                if (hasError) return showAviso("Todos os nomes de etapas e sub-etapas são obrigatórios.");
+                
+                try {
+                    const produtoData = { codigo, etapas };
+                    const produtosRef = collection(db, `artifacts/${appId}/public/data/produtos`);
+                    if (currentEditingProductId) {
+                        await setDoc(doc(produtosRef, currentEditingProductId), produtoData);
+                        showAviso("Produto atualizado!");
                     } else {
-                        ordensEmAndamentoUl.appendChild(li);
+                        await addDoc(produtosRef, produtoData);
+                        showAviso("Produto salvo!");
                     }
-                });
+                    elements.codigoProdutoCadastroInput.value = '';
+                    elements.etapasContainer.innerHTML = '';
+                    elements.salvarProdutoBtn.textContent = 'Salvar Produto';
+                    currentEditingProductId = null;
+                } catch(e) { console.error(e); showAviso("Erro ao salvar produto."); }
             });
-        }
 
-        async function carregarOrdemParaApontamento(orderId, orderData) {
-            currentOrderDocId = orderId;
-            ordemProducaoAtual = orderData;
-            switchTab('historicoTab');
-            
-            listasDeOrdensDiv.classList.add('hidden');
-            ordemDetalhesDiv.classList.remove('hidden');
-            
-            finalizarOrdemBtn.disabled = !checkAllEtapasConcluded(ordemProducaoAtual);
-            
-            renderizarOrdem();
-        }
-        
-        function fillFormForEditing(id, data) {
-            currentEditingProductId = id;
-            codigoProdutoCadastroInput.value = data.codigo;
-            etapasContainer.innerHTML = '';
-            data.etapas.forEach(etapa => {
-                const etapaDiv = createEtapaField(etapa.nome);
-                const subetapasContainer = etapaDiv.querySelector('.subetapas-container');
-                etapa.subetapas.forEach(subetapa => {
-                    createSubetapaField(subetapasContainer, subetapa.nome);
-                });
-            });
-            salvarProdutoBtn.textContent = 'Atualizar Produto';
-        }
-
-        // Funções de manipulação do DOM
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            document.getElementById(`${tabId}Btn`).classList.add('active');
-            
-            if (tabId === 'cadastroTab') {
-                salvarProdutoBtn.textContent = 'Salvar Produto';
-                currentEditingProductId = null;
-            }
-        }
-        
-        // Funções de criação dinâmica de campos de formulário
-        function createEtapaField(etapaNome = '') {
-            const etapaDiv = document.createElement('div');
-            etapaDiv.classList.add('etapa', 'p-4', 'border', 'rounded-lg', 'bg-gray-50', 'space-y-2');
-            etapaDiv.innerHTML = `
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Nome da Etapa</label>
-                    <input type="text" class="etapa-nome mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Ex: Corte" value="${etapaNome}">
-                </div>
-                <div class="subetapas-container pl-4 space-y-2"></div>
-                <div class="flex space-x-2">
-                    <button type="button" class="add-subetapa-btn flex-1 bg-blue-400 hover:bg-blue-500 text-white font-semibold py-1 px-2 rounded-md text-sm shadow-sm">Adicionar Sub-etapa</button>
-                    <button type="button" class="remove-etapa-btn flex-1 bg-red-400 hover:bg-red-500 text-white font-semibold py-1 px-2 rounded-md text-sm shadow-sm">Remover Etapa</button>
-                </div>
-            `;
-            etapasContainer.appendChild(etapaDiv);
-            
-            etapaDiv.querySelector('.add-subetapa-btn').addEventListener('click', () => createSubetapaField(etapaDiv.querySelector('.subetapas-container')));
-            etapaDiv.querySelector('.remove-etapa-btn').addEventListener('click', () => etapaDiv.remove());
-
-            return etapaDiv;
-        }
-        
-        function createSubetapaField(container, subetapaNome = '') {
-            const subetapaDiv = document.createElement('div');
-            subetapaDiv.classList.add('subetapa', 'flex', 'items-center', 'space-x-2');
-            subetapaDiv.innerHTML = `
-                <input type="text" class="subetapa-nome flex-1 block w-full rounded-md border-gray-300 shadow-sm p-2 text-sm" placeholder="Nome da Sub-etapa" value="${subetapaNome}">
-                <button type="button" class="remove-subetapa-btn bg-red-400 hover:bg-red-500 text-white font-semibold py-1 px-2 rounded-md text-sm shadow-sm">Remover</button>
-            `;
-            container.appendChild(subetapaDiv);
-            
-            subetapaDiv.querySelector('.remove-subetapa-btn').addEventListener('click', () => subetapaDiv.remove());
-        }
-
-        // Lógica de manipulação de pausas
-        document.getElementById('salvarJustificativaBtn').addEventListener('click', async () => {
-            if (!currentPauseContext) return;
-            const justificativa = justificativaInput.value;
-            if (justificativa.trim() === '') {
-                showAviso("A justificativa não pode estar vazia.");
-                return;
-            }
-            
-            const { index, subIndex } = currentPauseContext;
-            const pauseTime = new Date().getTime();
-            
-            const subetapaData = ordemProducaoAtual.etapas[index].subetapas[subIndex];
-            if (subetapaData.emPausa) {
-                 const lastPause = subetapaData.pausas[subetapaData.pausas.length - 1];
-                 lastPause.fim = pauseTime;
-                 const duracao = lastPause.fim - lastPause.inicio;
-                 subetapaData.tempoTotalPausas += duracao;
-                 document.querySelector(`.subetapa-card[data-index="${index}"][data-sub-index="${subIndex}"] .pausar-btn`).textContent = 'Pausar';
-                 subetapaData.emPausa = false;
-            } else {
-                 subetapaData.pausas.push({
-                     justificativa: justificativa,
-                     inicio: pauseTime
-                 });
-                 document.querySelector(`.subetapa-card[data-index="${index}"][data-sub-index="${subIndex}"] .pausar-btn`).textContent = 'Continuar';
-                 subetapaData.emPausa = true;
-            }
-
-            justificativaInput.value = '';
-            justificativaModal.classList.add('hidden');
-            currentPauseContext = null;
-
-            await updateOrderInFirestore();
-        });
-
-        document.getElementById('cancelarJustificativaBtn').addEventListener('click', () => {
-            justificativaInput.value = '';
-            justificativaModal.classList.add('hidden');
-            currentPauseContext = null;
-        });
-        
-        // Lógica para preencher responsável e iniciar a etapa
-        salvarResponsavelBtn.addEventListener('click', async () => {
-            if (!currentStartContext) return;
-            const responsavel = responsavelInput.value.trim();
-            if (responsavel === '') {
-                showAviso("O nome do responsável não pode estar vazio.");
-                return;
-            }
-
-            const { parent, index, subIndex } = currentStartContext;
-            const now = new Date().getTime();
-            
-            // Lógica para subetapa
-            const subetapaData = ordemProducaoAtual.etapas[index].subetapas[subIndex];
-            subetapaData.inicio = now;
-            subetapaData.responsavel = responsavel;
-            parent.querySelector('.responsavel-subetapa-display').textContent = `Responsável: ${responsavel}`;
-            
-            // Inicia a etapa pai se ainda não estiver iniciada
-            const etapaData = ordemProducaoAtual.etapas[index];
-            if (!etapaData.inicio) {
-                etapaData.inicio = now;
-                etapaData.responsavel = responsavel;
-                const parentEtapaElement = document.querySelector(`.etapa-card[data-index="${index}"]`);
-                parentEtapaElement.querySelector('.responsavel-etapa-display').textContent = `Responsável: ${responsavel}`;
+            elements.abrirOrdemBtn.addEventListener('click', async function() {
+                const numero = elements.numeroOrdemInput.value.trim();
+                const produtoId = elements.produtoApontamentoSelect.value;
+                const quantidade = parseInt(elements.quantidadeApontamentoInput.value, 10);
+                if (!numero || !produtoId || isNaN(quantidade) || quantidade <= 0) return showAviso("Preencha todos os campos.");
                 
-                // Inicia a ordem completa se for a primeira etapa
-                if (!ordemProducaoAtual.dataInicio) {
-                    ordemProducaoAtual.dataInicio = Timestamp.now();
-                }
-            }
-            
-            parent.querySelector('.iniciar-btn').disabled = true;
-            parent.querySelector('.pausar-btn').disabled = false;
-            parent.querySelector('.concluir-btn').disabled = false;
-            
-            responsavelModal.classList.add('hidden');
-            responsavelInput.value = '';
-            currentStartContext = null;
-            
-            await updateOrderInFirestore();
-        });
-
-        cancelarResponsavelBtn.addEventListener('click', () => {
-            responsavelModal.classList.add('hidden');
-            responsavelInput.value = '';
-            currentStartContext = null;
-        });
-
-        function handleConclude(event) {
-            const btn = event.target;
-            const parent = btn.closest('.subetapa-card');
-            if (!parent) return;
-
-            const index = parseInt(parent.dataset.index);
-            const subIndex = parseInt(parent.dataset.subIndex);
-
-            const subetapaData = ordemProducaoAtual.etapas[index].subetapas[subIndex];
-            const etapaData = ordemProducaoAtual.etapas[index];
-            const parentEtapaElement = document.querySelector(`.etapa-card[data-index="${index}"]`);
-
-            if (!subetapaData.inicio) {
-                showAviso("Sub-etapa não iniciada.");
-                return;
-            }
-            if (subetapaData.fim) {
-                showAviso("Sub-etapa já concluída.");
-                return;
-            }
-            if (subetapaData.emPausa) {
-                showAviso("Não é possível concluir enquanto a sub-etapa está em pausa.");
-                return;
-            }
-
-            const now = new Date().getTime();
-            subetapaData.fim = now;
-            const tempoBruto = now - subetapaData.inicio;
-            const tempoLiquido = tempoBruto - subetapaData.tempoTotalPausas;
-            subetapaData.tempoLiquido = tempoLiquido;
-            subetapaData.tempoLiquidoFormatado = formatarTempo(tempoLiquido);
-            
-            const tempoLiquidoEmHoras = tempoLiquido / (1000 * 60 * 60);
-            subetapaData.produtividade = tempoLiquidoEmHoras > 0 ? subetapaData.quantidade / tempoLiquidoEmHoras : 0;
-            
-            btn.disabled = true;
-            parent.querySelector('.iniciar-btn').disabled = true;
-            parent.querySelector('.pausar-btn').disabled = true;
-
-            showAviso(`Sub-etapa "${subetapaData.nome}" concluída! Tempo Líquido: ${subetapaData.tempoLiquidoFormatado}`);
-            parent.classList.add('etapa-concluida');
-
-            // Checa se todas as subetapas da etapa pai foram concluídas
-            const allSubetapasConcluidas = checkAllSubetapasConcluded(etapaData);
-
-            if (allSubetapasConcluidas) {
-                // Calcula o tempo total da etapa pai
-                let totalTempoLiquidoEtapa = 0;
-                let totalTempoPausasEtapa = 0;
-
-                etapaData.subetapas.forEach(sub => {
-                    totalTempoLiquidoEtapa += sub.tempoLiquido;
-                    totalTempoPausasEtapa += sub.tempoTotalPausas;
-                });
-                
-                etapaData.fim = now;
-                etapaData.tempoLiquido = totalTempoLiquidoEtapa;
-                etapaData.tempoTotalPausas = totalTempoPausasEtapa;
-                etapaData.tempoLiquidoFormatado = formatarTempo(totalTempoLiquidoEtapa);
-                etapaData.concluida = true;
-
-                // Atualiza o display da etapa pai
-                parentEtapaElement.querySelector('.tempo-liquido-etapa').textContent = etapaData.tempoLiquidoFormatado;
-                parentEtapaElement.querySelector('.pausas-etapa').textContent = formatarTempo(etapaData.tempoTotalPausas);
-                parentEtapaElement.classList.add('etapa-concluida');
-                
-                showAviso(`Etapa "${etapaData.nome}" concluída automaticamente!`);
-
-                const allEtapasConcluidas = checkAllEtapasConcluded(ordemProducaoAtual);
-                if (allEtapasConcluidas) {
-                    handleFinalizeMainAutomatic();
-                }
-            }
-            updateOrderInFirestore(); // Atualiza a ordem após a conclusão da sub-etapa
-        }
-        
-        async function updateOrderInFirestore() {
-            if (!currentOrderDocId) return;
-            try {
-                const docRef = doc(db, `artifacts/${appId}/public/data/ordens`, currentOrderDocId);
-                await setDoc(docRef, ordemProducaoAtual);
-            } catch (e) {
-                console.error("Erro ao atualizar ordem no Firestore:", e);
-                showAviso("Erro ao atualizar a ordem. Verifique sua conexão.");
-            }
-        }
-
-        async function handleFinalizeMainAutomatic() {
-            if (ordemProducaoAtual.concluida) return;
-            ordemProducaoAtual.dataFim = Timestamp.now();
-            
-            let totalTempoLiquidoOrdem = 0;
-            ordemProducaoAtual.etapas.forEach(etapa => {
-                totalTempoLiquidoOrdem += etapa.tempoLiquido;
+                try {
+                    const ordensRef = collection(db, `artifacts/${appId}/public/data/ordens`);
+                    const q = query(ordensRef, where("numero", "==", numero));
+                    if (!(await getDocs(q)).empty) return showAviso(`A ordem #${numero} já existe.`);
+                    
+                    const produtoDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/produtos`, produtoId));
+                    if (!produtoDoc.exists()) return showAviso("Produto não encontrado.");
+                    
+                    const pData = produtoDoc.data();
+                    const etapas = pData.etapas.map(function(e) {
+                        return {
+                            ...e, inicio: null, fim: null, responsavel: null, concluida: false, tempoLiquido: 0,
+                            subetapas: e.subetapas.map(function(s) {
+                                return {...s, inicio: null, fim: null, responsavel: null, emPausa: false, pausas: [], tempoTotalPausas: 0, tempoLiquido: 0, produtividade: 0 };
+                            })
+                        };
+                    });
+                    
+                    await addDoc(ordensRef, { numero, produto: pData.codigo, produtoId, quantidade, dataInicio: null, dataFim: null, concluida: false, etapas });
+                    
+                    showAviso(`Ordem #${numero} aberta!`);
+                    elements.numeroOrdemInput.value = '';
+                    elements.produtoApontamentoSelect.value = '';
+                    elements.quantidadeApontamentoInput.value = '';
+                    switchTab('historicoTab');
+                } catch (e) { console.error(e); showAviso("Erro ao abrir ordem."); }
             });
 
-            ordemProducaoAtual.tempoLiquidoMs = totalTempoLiquidoOrdem;
-            ordemProducaoAtual.tempoLiquidoFormatado = formatarTempo(totalTempoLiquidoOrdem);
-            
-            const tempoLiquidoEmHoras = ordemProducaoAtual.tempoLiquidoMs / (1000 * 60 * 60);
-            ordemProducaoAtual.produtividade = tempoLiquidoEmHoras > 0 ? ordemProducaoAtual.quantidade / tempoLiquidoEmHoras : 0;
-            ordemProducaoAtual.concluida = true;
-            
-            try {
-                const docRef = doc(db, `artifacts/${appId}/public/data/ordens`, currentOrderDocId);
-                await setDoc(docRef, ordemProducaoAtual);
-                showAviso("Ordem de produção finalizada e salva automaticamente com sucesso!");
-                ordemDetalhesDiv.classList.add('hidden');
-                listasDeOrdensDiv.classList.remove('hidden');
-            } catch (e) {
-                console.error("Erro ao salvar ordem automaticamente:", e);
-                showAviso("Erro ao salvar ordem. Verifique a conexão.");
-            }
-        }
-        
-        async function handleFinalizeMain() {
-            if (ordemProducaoAtual.concluida) return;
+            elements.salvarResponsavelBtn.addEventListener('click', async function() {
+                const responsavel = elements.responsavelInput.value.trim();
+                if (!responsavel || !currentStartContext) return;
+                
+                const { index, subIndex } = currentStartContext;
+                const now = Timestamp.now();
+                const subetapa = ordemProducaoAtual.etapas[index].subetapas[subIndex];
+                subetapa.inicio = now;
+                subetapa.responsavel = responsavel;
+                
+                const etapa = ordemProducaoAtual.etapas[index];
+                if (!etapa.inicio) { etapa.inicio = now; etapa.responsavel = responsavel; }
+                if (!ordemProducaoAtual.dataInicio) ordemProducaoAtual.dataInicio = now;
 
-            const allEtapasConcluidas = checkAllEtapasConcluded(ordemProducaoAtual);
-            if (!allEtapasConcluidas) {
-                showAviso("Não é possível finalizar a ordem. Algumas etapas ainda não foram concluídas.");
-                return;
-            }
-            
-            ordemProducaoAtual.dataFim = Timestamp.now();
-            
-            let totalTempoLiquidoOrdem = 0;
-            ordemProducaoAtual.etapas.forEach(etapa => {
-                totalTempoLiquidoOrdem += etapa.tempoLiquido;
+                elements.responsavelModal.classList.add('hidden');
+                await updateOrderInFirestore();
+                renderizarOrdem();
             });
 
-            ordemProducaoAtual.tempoLiquidoMs = totalTempoLiquidoOrdem;
-            ordemProducaoAtual.tempoLiquidoFormatado = formatarTempo(totalTempoLiquidoOrdem);
-            
-            const tempoLiquidoEmHoras = ordemProducaoAtual.tempoLiquidoMs / (1000 * 60 * 60);
-            ordemProducaoAtual.produtividade = tempoLiquidoEmHoras > 0 ? ordemProducaoAtual.quantidade / tempoLiquidoEmHoras : 0;
-            ordemProducaoAtual.concluida = true;
+            elements.salvarJustificativaBtn.addEventListener('click', async function() {
+                const justificativa = elements.justificativaInput.value.trim();
+                if (!justificativa || !currentPauseContext) return;
 
-            try {
-                const docRef = doc(db, `artifacts/${appId}/public/data/ordens`, currentOrderDocId);
-                await setDoc(docRef, ordemProducaoAtual);
-                showAviso("Ordem de produção finalizada e salva com sucesso!");
-                ordemDetalhesDiv.classList.add('hidden');
-                listasDeOrdensDiv.classList.remove('hidden');
-            } catch (e) {
-                console.error("Erro ao salvar ordem:", e);
-                showAviso("Erro ao salvar ordem. Verifique a conexão.");
-            }
+                const { index, subIndex } = currentPauseContext;
+                const sub = ordemProducaoAtual.etapas[index].subetapas[subIndex];
+                sub.pausas.push({ justificativa, inicio: Date.now(), fim: null });
+                sub.emPausa = true;
+                
+                elements.justificativaModal.classList.add('hidden');
+                await updateOrderInFirestore();
+                renderizarOrdem();
+            });
         }
         
-        initializeFirebase();
+        function main() {
+            bindEventListeners();
+            initializeFirebase();
+            switchTab('cadastroTab');
+        }
+
+        main();
     </script>
 </body>
 </html>
+
