@@ -1,795 +1,467 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Apontamento de Produção Avançado</title>
+    <title>Visualizador de Dados Inteligente</title>
+    <!-- Tailwind CSS para estilização rápida e responsiva -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Adição da biblioteca Chart.js para os dashboards -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js para a criação de gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <!-- PapaParse para ler arquivos CSV no navegador -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- SheetJS (xlsx) para ler arquivos Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Lucide Icons para ícones -->
+    <script src="https://unpkg.com/lucide-react@0.292.0/dist/lucide-react.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; color: #1f2937; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        .tab-button { @apply flex-1 py-2 px-4 text-center cursor-pointer font-semibold transition-colors duration-200; }
-        .product-item { @apply p-2 bg-gray-100 rounded border border-gray-200 cursor-pointer hover:bg-gray-200 transition-colors; }
-        .etapa-concluida { background-color: #d1fae5 !important; border-color: #6ee7b7; }
+        /* Estilos personalizados para melhorar a aparência */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .chart-card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: all 0.3s ease-in-out;
+        }
+        .chart-card:hover {
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
-    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-2xl border border-gray-200">
-        <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Sistema de Apontamento</h1>
-        <div class="text-center text-sm mb-4 text-gray-500">
-            <p>ID do Usuário: <span id="userIdDisplay" class="font-mono text-xs">Carregando...</span></p>
-        </div>
+<body class="text-gray-800">
 
-        <div class="flex space-x-2 mb-6">
-            <div id="cadastroTabBtn" class="tab-button flex items-center justify-center space-x-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M9 2a1 1 0 00-1 1v1H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V6a2 2 0 00-2-2h-2V3a1 1 0 00-1-1H9z" />
-                    <path fill-rule="evenodd" d="M9 6a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1z" clip-rule="evenodd" />
-                </svg>
-                <span>Cadastro de Produtos</span>
+    <!-- Container principal da aplicação -->
+    <div id="app" class="min-h-screen flex flex-col">
+        <!-- Cabeçalho -->
+        <header class="bg-white shadow-md p-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                <h1 class="text-2xl font-bold text-gray-700">Visualizador de Dados Dinâmico</h1>
             </div>
-            <div id="apontamentoTabBtn" class="tab-button flex items-center justify-center space-x-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.415L11 9.586V6z" clip-rule="evenodd" />
-                </svg>
-                <span>Apontamento de Ordem</span>
-            </div>
-            <div id="historicoTabBtn" class="tab-button flex items-center justify-center space-x-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5z" />
-                  <path d="M2 12a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2z" />
-                </svg>
-                <span>Histórico de Ordens</span>
-            </div>
-            <div id="dashboardTabBtn" class="tab-button flex items-center justify-center space-x-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
-                </svg>
-                <span>Dashboard</span>
-            </div>
-        </div>
-        
-        <div id="cadastroTab" class="tab-content">
-            <h2 class="text-2xl font-semibold mb-4 text-gray-800 text-center">Cadastro de Produtos</h2>
-            <div class="space-y-4">
-                <div><label for="codigoProdutoCadastro" class="block text-sm font-medium text-gray-700">Código do Produto Acabado</label><input type="text" id="codigoProdutoCadastro" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Ex: UAC0001-N"></div>
-                <div id="etapasContainer" class="space-y-4"></div>
-                <button id="addEtapaBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow">Adicionar Etapa</button>
-                <button id="salvarProdutoBtn" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow">Salvar Produto</button>
-            </div>
-            <div id="produtosSalvos" class="mt-8">
-                <h3 class="text-xl font-semibold mb-2">Produtos Cadastrados</h3>
-                <ul id="listaProdutosCadastrados" class="list-none space-y-2"></ul>
-            </div>
-        </div>
-        
-        <div id="apontamentoTab" class="tab-content">
-            <h2 class="text-2xl font-semibold mb-4 text-gray-800 text-center">Apontamento de Ordem de Produção</h2>
-            <div class="space-y-4">
-                <div><label for="numeroOrdem" class="block text-sm font-medium text-gray-700">Número da Ordem</label><input type="text" id="numeroOrdem" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Ex: 123456"></div>
-                <div><label for="produtoApontamento" class="block text-sm font-medium text-gray-700">Código do Produto</label><select id="produtoApontamento" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"><option value="">Selecione um produto...</option></select></div>
-                <div><label for="quantidadeApontamento" class="block text-sm font-medium text-gray-700">Quantidade</label><input type="number" id="quantidadeApontamento" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Ex: 100"></div>
-                <button id="abrirOrdemBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow">Abrir Ordem</button>
-            </div>
-        </div>
-        
-        <div id="historicoTab" class="tab-content">
-            <h2 class="text-2xl font-semibold mb-4 text-gray-800 text-center">Histórico de Ordens</h2>
-            <div id="ordemDetalhes" class="hidden mt-8 p-4 bg-white rounded-lg shadow-md border border-gray-200">
-                <h3 class="text-xl font-semibold mb-4 text-gray-800 text-center">Detalhes da Ordem #<span id="ordemNumeroDisplay">--</span></h3>
-                <div class="flex justify-center space-x-4 mb-4">
-                    <button id="finalizarOrdemBtn" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled>Finalizar Ordem</button>
-                    <button id="voltarBtn" class="bg-gray-400 hover:bg-gray-500 text-white font-semibold py-2 px-6 rounded-lg shadow-lg">Voltar</button>
-                </div>
-                <div id="etapasApontamento" class="space-y-6"></div>
-            </div>
-            <div id="listasDeOrdens" class="space-y-6">
-                <div class="flex justify-end mb-4">
-                    <button id="exportarBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md">Exportar Histórico (CSV)</button>
-                </div>
-                <div><h3 class="text-xl font-semibold text-gray-700">Ordens Em Andamento</h3><ul id="ordensEmAndamentoUl" class="list-none space-y-2"></ul></div>
-                <div><h3 class="text-xl font-semibold text-gray-700">Ordens Concluídas</h3><ul id="ordensConcluidasUl" class="list-none space-y-2"></ul></div>
-            </div>
-        </div>
+            <button id="reset-button" class="hidden bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M21 21v-5h-5"/></svg>
+                Carregar Outro Arquivo
+            </button>
+        </header>
 
-        <div id="dashboardTab" class="tab-content">
-            <h2 class="text-2xl font-semibold mb-4 text-gray-800 text-center">Dashboard de Produtividade</h2>
-            <div class="space-y-4">
-                <div>
-                    <label for="subetapaFilter" class="block text-sm font-medium text-gray-700">Analisar Produtividade por Sub-etapa</label>
-                    <select id="subetapaFilter" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
-                        <option value="">Selecione uma sub-etapa...</option>
-                    </select>
+        <!-- Seção de Upload (visível inicialmente) -->
+        <main id="upload-section" class="flex-grow flex items-center justify-center p-4">
+            <div class="w-full max-w-2xl text-center">
+                <div id="drop-zone" class="border-4 border-dashed border-gray-300 rounded-2xl p-10 md:p-20 cursor-pointer hover:border-blue-500 transition-all bg-white">
+                    <input type="file" id="file-input" class="hidden" accept=".csv, .xlsx">
+                    <div class="flex flex-col items-center gap-4 text-gray-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                        <h2 class="text-xl font-semibold">Arraste e solte seu arquivo CSV ou XLSX aqui</h2>
+                        <p class="text-gray-500">ou</p>
+                        <button id="browse-button" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors">
+                            Procure no seu computador
+                        </button>
+                        <p id="file-name" class="mt-2 text-sm font-medium text-gray-700"></p>
+                    </div>
                 </div>
-                <div class="bg-gray-50 p-4 rounded-lg border">
-                     <canvas id="produtividadeChart"></canvas>
+                 <div id="loading-indicator" class="hidden mt-6 flex flex-col items-center justify-center gap-4">
+                    <div class="loading-spinner"></div>
+                    <p class="text-gray-600 font-medium">Analisando seus dados...</p>
+                </div>
+                <div id="error-message" class="hidden mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative" role="alert">
+                    <strong class="font-bold">Erro!</strong>
+                    <span class="block sm:inline" id="error-text"></span>
                 </div>
             </div>
+        </main>
+
+        <!-- Seção do Dashboard (oculta inicialmente) -->
+        <div id="dashboard-section" class="hidden flex-grow md:flex p-4 gap-4">
+            <!-- Barra Lateral com Informações dos Dados -->
+            <aside class="w-full md:w-1/4 lg:w-1/5 bg-white rounded-lg shadow-md p-4 overflow-y-auto flex-shrink-0 mb-4 md:mb-0">
+                <h2 class="text-xl font-bold border-b pb-2 mb-3">Colunas do Arquivo</h2>
+                <div id="column-info"></div>
+            </aside>
+
+            <!-- Área Principal com os Gráficos -->
+            <main class="w-full md:w-3/4 lg:w-4/5 flex flex-col">
+                <div class="mb-4">
+                    <button id="add-chart-button" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-5 rounded-lg transition-colors flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                        Adicionar Gráfico
+                    </button>
+                </div>
+                <div id="charts-grid" class="flex-grow grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6 overflow-y-auto">
+                    <!-- Gráficos serão inseridos aqui dinamicamente -->
+                    <div id="empty-dashboard-message" class="col-span-full flex flex-col items-center justify-center text-center text-gray-500 h-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-4"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+                        <h3 class="text-2xl font-semibold">Seu dashboard está vazio</h3>
+                        <p class="mt-2">Comece clicando em "Adicionar Gráfico" para criar sua primeira visualização.</p>
+                    </div>
+                </div>
+            </main>
         </div>
-        
-        <div id="justificativaModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50"><div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md border border-gray-200"><h3 class="text-lg font-bold mb-4">Justificativa da Pausa</h3><textarea id="justificativaInput" rows="4" class="block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Motivo da pausa"></textarea><div class="mt-4 flex justify-end space-x-2"><button id="salvarJustificativaBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg">Salvar</button><button id="cancelarJustificativaBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancelar</button></div></div></div>
-        <div id="responsavelModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50"><div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md border border-gray-200"><h3 class="text-lg font-bold mb-4">Responsável pela Etapa</h3><input type="text" id="responsavelInput" class="block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Nome do operador"><div class="mt-4 flex justify-end space-x-2"><button id="salvarResponsavelBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg">Salvar</button><button id="cancelarResponsavelBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancelar</button></div></div></div>
-        <div id="avisoModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50"><div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm border border-gray-200 text-center"><p id="avisoText" class="text-lg mb-4 text-gray-700">--</p><button id="fecharAvisoBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg">OK</button></div></div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, getDocs, Timestamp, where, doc, getDoc, setDoc, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <script>
+        // --- Referências aos Elementos do DOM ---
+        const uploadSection = document.getElementById('upload-section');
+        const dashboardSection = document.getElementById('dashboard-section');
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const browseButton = document.getElementById('browse-button');
+        const fileNameDisplay = document.getElementById('file-name');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const errorMessage = document.getElementById('error-message');
+        const errorText = document.getElementById('error-text');
+        const resetButton = document.getElementById('reset-button');
+        const addChartButton = document.getElementById('add-chart-button');
+        const columnInfoContainer = document.getElementById('column-info');
+        const chartsGrid = document.getElementById('charts-grid');
+        const emptyDashboardMessage = document.getElementById('empty-dashboard-message');
 
-        const elements = {
-            userIdDisplay: document.getElementById('userIdDisplay'),
-            cadastroTabBtn: document.getElementById('cadastroTabBtn'),
-            apontamentoTabBtn: document.getElementById('apontamentoTabBtn'),
-            historicoTabBtn: document.getElementById('historicoTabBtn'),
-            dashboardTabBtn: document.getElementById('dashboardTabBtn'),
-            codigoProdutoCadastroInput: document.getElementById('codigoProdutoCadastro'),
-            etapasContainer: document.getElementById('etapasContainer'),
-            addEtapaBtn: document.getElementById('addEtapaBtn'),
-            salvarProdutoBtn: document.getElementById('salvarProdutoBtn'),
-            listaProdutosCadastradosUl: document.getElementById('listaProdutosCadastrados'),
-            numeroOrdemInput: document.getElementById('numeroOrdem'),
-            produtoApontamentoSelect: document.getElementById('produtoApontamento'),
-            quantidadeApontamentoInput: document.getElementById('quantidadeApontamento'),
-            abrirOrdemBtn: document.getElementById('abrirOrdemBtn'),
-            ordemDetalhesDiv: document.getElementById('ordemDetalhes'),
-            ordemNumeroDisplay: document.getElementById('ordemNumeroDisplay'),
-            finalizarOrdemBtn: document.getElementById('finalizarOrdemBtn'),
-            etapasApontamentoDiv: document.getElementById('etapasApontamento'),
-            ordensEmAndamentoUl: document.getElementById('ordensEmAndamentoUl'),
-            ordensConcluidasUl: document.getElementById('ordensConcluidasUl'),
-            listasDeOrdensDiv: document.getElementById('listasDeOrdens'),
-            voltarBtn: document.getElementById('voltarBtn'),
-            justificativaModal: document.getElementById('justificativaModal'),
-            justificativaInput: document.getElementById('justificativaInput'),
-            salvarJustificativaBtn: document.getElementById('salvarJustificativaBtn'),
-            cancelarJustificativaBtn: document.getElementById('cancelarJustificativaBtn'),
-            responsavelModal: document.getElementById('responsavelModal'),
-            responsavelInput: document.getElementById('responsavelInput'),
-            salvarResponsavelBtn: document.getElementById('salvarResponsavelBtn'),
-            cancelarResponsavelBtn: document.getElementById('cancelarResponsavelBtn'),
-            avisoModal: document.getElementById('avisoModal'),
-            avisoText: document.getElementById('avisoText'),
-            fecharAvisoBtn: document.getElementById('fecharAvisoBtn'),
-            exportarBtn: document.getElementById('exportarBtn'),
-            subetapaFilter: document.getElementById('subetapaFilter'),
-        };
+        // --- Variáveis de Estado Global ---
+        let rawData = [];
+        let headers = [];
+        let columnProfiles = {};
+        let charts = []; 
 
-        let db, auth, userId;
-        let ordemProducaoAtual = {};
-        let currentPauseContext = null;
-        let currentStartContext = null;
-        let currentEditingProductId = null;
-        let currentOrderDocId = null;
-        let allOrdersData = [];
-        let productivityChart = null;
+        // --- Funções de Manipulação de UI ---
+        function showError(message) {
+            errorText.textContent = message;
+            errorMessage.classList.remove('hidden');
+            loadingIndicator.classList.add('hidden');
+            dropZone.classList.remove('hidden');
+        }
 
-        const firebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config) ? JSON.parse(__firebase_config) : {
-            apiKey: "AIzaSyBDb1E_wHtmISvNG31RhlmP979890X7nxY",
-            authDomain: "apontamentoproducao-f141e.firebaseapp.com",
-            projectId: "apontamentoproducao-f141e",
-            storageBucket: "apontamentoproducao-f141e.appspot.com",
-            messagingSenderId: "516590802933",
-            appId: "1:516590802933:web:756d1e76d981e51604b2bc"
-        };
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        function resetApp() {
+            uploadSection.classList.remove('hidden');
+            dashboardSection.classList.add('hidden');
+            resetButton.classList.add('hidden');
+            fileNameDisplay.textContent = '';
+            errorMessage.classList.add('hidden');
+            columnInfoContainer.innerHTML = '';
+            chartsGrid.innerHTML = '';
+            chartsGrid.appendChild(emptyDashboardMessage);
+            emptyDashboardMessage.classList.remove('hidden');
+            rawData = [];
+            headers = [];
+            columnProfiles = {};
+            charts.forEach(chart => chart.destroy());
+            charts = [];
+            fileInput.value = ''; 
+        }
+
+        function showDashboardUI() {
+            uploadSection.classList.add('hidden');
+            loadingIndicator.classList.add('hidden');
+            dropZone.classList.remove('hidden');
+            dashboardSection.classList.remove('hidden');
+            dashboardSection.classList.add('flex');
+            resetButton.classList.remove('hidden');
+        }
+
+        // --- Funções de Manipulação de Arquivos e Dados ---
+        function processData(data, fields, errors) {
+            if (errors && errors.length > 0) {
+                showError(`Erro ao ler o arquivo: ${errors[0].message}`);
+                return;
+            }
+            if (!fields || fields.length === 0) {
+                showError('Não foi possível encontrar o cabeçalho no arquivo. Verifique se a primeira linha contém os nomes das colunas.');
+                return;
+            }
+            rawData = data;
+            headers = fields;
+            analyzeData();
+            setupDashboard();
+        }
+
+        function handleFile(file) {
+            const fileName = file ? file.name.toLowerCase() : '';
+            if (!file || (!fileName.endsWith('.csv') && !fileName.endsWith('.xlsx'))) {
+                showError('Por favor, selecione um arquivo CSV ou XLSX válido.');
+                return;
+            }
+            fileNameDisplay.textContent = `Arquivo: ${file.name}`;
+            errorMessage.classList.add('hidden');
+            loadingIndicator.classList.remove('hidden');
+            dropZone.classList.add('hidden');
+            
+            if (fileName.endsWith('.csv')) {
+                Papa.parse(file, { header: true, skipEmptyLines: true, complete: r => processData(r.data, r.meta.fields, r.errors), error: e => showError(`Erro ao processar: ${e.message}`) });
+            } else {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const workbook = XLSX.read(e.target.result, { type: 'array' });
+                        const sheetName = workbook.SheetNames[0];
+                        if (!sheetName) return processData([], [], [{ message: "O arquivo XLSX não contém planilhas." }]);
+                        const worksheet = workbook.Sheets[sheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                        if (jsonData.length === 0) return processData([], [], [{ message: "A planilha está vazia." }]);
+                        processData(jsonData, Object.keys(jsonData[0]), []);
+                    } catch (error) { showError(`Erro ao ler o arquivo XLSX: ${error.message}`); }
+                };
+                reader.onerror = (error) => showError(`Erro ao ler o arquivo: ${error.toString()}`);
+                reader.readAsArrayBuffer(file);
+            }
+        }
         
-        function showAviso(message) {
-            elements.avisoText.textContent = message;
-            elements.avisoModal.classList.remove('hidden');
-        }
-
-        function formatarTempo(ms) {
-            if (ms === null || isNaN(ms) || ms < 0) return '00:00:00';
-            const s = Math.floor(ms / 1000), m = Math.floor(s / 60), h = Math.floor(m / 60);
-            return `${String(h).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-        }
-
-        function checkAllSubetapasConcluded(etapa) {
-            if (!etapa || !etapa.subetapas) return false;
-            return etapa.subetapas.every(sub => sub.fim !== null);
-        }
-
-        function checkAllEtapasConcluded(ordem) {
-            if (!ordem || !ordem.etapas) return false;
-            return ordem.etapas.every(etapa => etapa.concluida);
-        }
-        
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(function(tab) {
-                tab.classList.remove('active');
+        function analyzeData() {
+            columnProfiles = {};
+            headers.forEach(header => {
+                const values = rawData.map(row => row[header]).filter(v => v !== null && v !== undefined && v !== '');
+                const profile = { name: header, totalCount: values.length, type: 'Categorical' };
+                const numericValues = values.map(Number).filter(v => !isNaN(v));
+                if (numericValues.length / values.length > 0.9) {
+                    profile.type = 'Numeric';
+                    profile.min = Math.min(...numericValues);
+                    profile.max = Math.max(...numericValues);
+                    profile.mean = numericValues.reduce((a, b) => a + b, 0) / numericValues.length;
+                }
+                profile.uniqueCount = [...new Set(values)].length;
+                columnProfiles[header] = profile;
             });
-            const buttonThemes = {
-                cadastroTabBtn: { active: ['bg-indigo-600', 'text-white'], inactive: ['bg-indigo-100', 'text-indigo-700', 'hover:bg-indigo-200'] },
-                apontamentoTabBtn: { active: ['bg-amber-500', 'text-white'], inactive: ['bg-amber-100', 'text-amber-700', 'hover:bg-amber-200'] },
-                historicoTabBtn: { active: ['bg-sky-600', 'text-white'], inactive: ['bg-sky-100', 'text-sky-700', 'hover:bg-sky-200'] },
-                dashboardTabBtn: { active: ['bg-emerald-600', 'text-white'], inactive: ['bg-emerald-100', 'text-emerald-700', 'hover:bg-emerald-200'] }
+        }
+
+        function setupDashboard() {
+            columnInfoContainer.innerHTML = '';
+            Object.values(columnProfiles).forEach(profile => {
+                const isNumeric = profile.type === 'Numeric';
+                const card = document.createElement('div');
+                card.className = 'p-3 mb-3 border rounded-lg bg-gray-50';
+                card.innerHTML = `
+                    <h3 class="font-bold text-md ${isNumeric ? 'text-blue-700' : 'text-green-700'} flex items-center gap-2">
+                        ${isNumeric ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10V4a2 2 0 0 1 2-2h8.5L20 7.5V20a2 2 0 0 1-2 2H4"/><polyline points="14 2 14 8 20 8"/><path d="M10 18.5a.5.5 0 0 1-.5-.5v-4a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5Z"/><path d="M14 18.5a.5.5 0 0 1-.5-.5v-2a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5Z"/><path d="M6 18.5a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5Z"/></svg>' : '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4h3a2 2 0 0 1 2 2v2"/><path d="M4 13v3a2 2 0 0 0 2 2h2"/><path d="M20 13v-3a2 2 0 0 0-2-2h-2"/><path d="M11 4h-3a2 2 0 0 0-2 2v2"/><path d="M18 10h-2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2"/><path d="M12 10V9a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v1"/><path d="M11 16v-1a1 1 0 0 0-1-1H8"/><rect width="6" height="6" x="4" y="4" rx="1"/></svg>'}
+                        ${profile.name}
+                    </h3>
+                    <p class="text-sm text-gray-600"><strong>Tipo:</strong> ${profile.type}</p>
+                    <p class="text-sm text-gray-600"><strong>Valores Únicos:</strong> ${profile.uniqueCount}</p>
+                    ${isNumeric ? `<p class="text-sm text-gray-600"><strong>Média:</strong> ${profile.mean.toFixed(2)}</p>` : ''}
+                `;
+                columnInfoContainer.appendChild(card);
+            });
+            showDashboardUI();
+        }
+
+        // --- Funções de Geração de Gráficos ---
+
+        function createChartCard() {
+            emptyDashboardMessage.classList.add('hidden');
+            const chartId = `chart-${Date.now()}-${Math.random()}`;
+            const card = document.createElement('div');
+            card.className = 'chart-card p-4 flex flex-col h-[500px]';
+
+            const allOptions = headers.map(h => `<option value="${h}">${h}</option>`).join('');
+            const numericCheckboxes = headers
+                .filter(h => columnProfiles[h].type === 'Numeric')
+                .map(h => `<label class="flex items-center gap-2 p-1 rounded hover:bg-gray-100"><input type="checkbox" class="y-axis-value h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" value="${h}"> ${h}</label>`)
+                .join('');
+            
+            card.innerHTML = `
+                <div class="flex-grow flex flex-col">
+                    <input type="text" value="Novo Gráfico" class="text-lg font-bold w-full p-1 mb-2 border-b focus:outline-none focus:border-blue-500">
+                    <div class="flex-grow min-h-0"><canvas id="${chartId}"></canvas></div>
+                </div>
+                <div class="mt-4 pt-3 border-t">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <label class="font-semibold block mb-1">Tipo de Gráfico</label>
+                            <select class="chart-type w-full p-1.5 border rounded-md bg-gray-50">
+                                <option value="bar">Barras</option>
+                                <option value="line">Linhas</option>
+                                <option value="pie">Pizza</option>
+                                <option value="doughnut">Rosca</option>
+                                <option value="scatter">Dispersão</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="font-semibold block mb-1">Eixo X / Legenda</label>
+                            <select class="x-axis w-full p-1.5 border rounded-md bg-gray-50">${allOptions}</select>
+                        </div>
+                        <div class="y-axis-container col-span-1 sm:col-span-2">
+                            <label class="font-semibold block mb-1">Eixo Y / Valores</label>
+                            <div class="border rounded-md p-2 max-h-28 overflow-y-auto bg-gray-50 space-y-1">
+                                <label class="flex items-center gap-2 p-1 rounded hover:bg-gray-100">
+                                    <input type="checkbox" class="y-axis-value h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" value="__count__" checked> Contagem
+                                </label>
+                                ${numericCheckboxes}
+                            </div>
+                        </div>
+                        <div class="col-span-1 sm:col-span-2 mt-2 pt-2 border-t percentage-container">
+                            <label class="flex items-center gap-2 cursor-pointer text-gray-700">
+                                <input type="checkbox" class="show-percentage-line h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                Mostrar percentual sobre o total (linha)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            `;
+            chartsGrid.appendChild(card);
+            
+            const ctx = document.getElementById(chartId).getContext('2d');
+            const chartInstance = new Chart(ctx, {});
+            charts.push(chartInstance); 
+
+            const typeSelect = card.querySelector('.chart-type');
+            const xSelect = card.querySelector('.x-axis');
+            const yCheckboxes = card.querySelectorAll('.y-axis-value');
+            const titleInput = card.querySelector('input[type="text"]');
+            const showPercentageLine = card.querySelector('.show-percentage-line');
+            
+            function update() {
+                const selectedYCols = Array.from(yCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
+                updateChart(chartInstance, {
+                    type: typeSelect.value,
+                    xCol: xSelect.value,
+                    yCols: selectedYCols,
+                    title: titleInput.value,
+                }, showPercentageLine.checked);
+            }
+
+            [typeSelect, xSelect, titleInput, showPercentageLine].forEach(el => el.addEventListener('change', update));
+            yCheckboxes.forEach(cb => cb.addEventListener('change', update));
+            titleInput.addEventListener('input', update);
+            
+            update(); // Initial render
+        }
+
+        function updateChart(chartInstance, config, showPercentage) {
+            const { type, xCol, yCols, title } = config;
+            
+            const datasets = yCols.map((yCol, index) => {
+                const isCount = yCol === '__count__';
+                const chartData = getChartData(xCol, isCount ? null : yCol, type);
+                const color = generateColors(1, index)[0];
+                return {
+                    label: isCount ? 'Contagem' : yCol,
+                    data: chartData.data,
+                    backgroundColor: color,
+                    borderColor: color.replace('0.6', '1'),
+                    borderWidth: type === 'line' ? 2 : 1,
+                    yAxisID: 'y',
+                };
+            });
+
+            const labels = getChartData(xCol, null, type).labels; // Get labels once
+            const cardElement = chartInstance.canvas.closest('.chart-card');
+            const yAxisContainer = cardElement.querySelector('.y-axis-container');
+            const percentageContainer = cardElement.querySelector('.percentage-container');
+            const showPercentageCheckbox = percentageContainer.querySelector('input');
+            
+            const canShowPercentage = ['bar', 'line'].includes(type) && yCols.length === 1 && showPercentage;
+            if (canShowPercentage) {
+                const total = datasets[0].data.reduce((a, b) => a + (b || 0), 0);
+                const percentageData = total > 0 ? datasets[0].data.map(d => ((d || 0) / total) * 100) : [];
+                datasets.push({
+                    type: 'line', label: 'Percentual', data: percentageData,
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    yAxisID: 'yPercentage', fill: false,
+                });
+            }
+
+            const scales = {
+                x: { title: { display: true, text: xCol } },
+                y: { beginAtZero: true, position: 'left', title: { display: true, text: yCols.join(', ') } }
             };
-            Object.keys(buttonThemes).forEach(function(btnId) {
-                const button = document.getElementById(btnId);
-                const theme = buttonThemes[btnId];
-                button.classList.remove(...theme.active);
-                button.classList.add(...theme.inactive);
-            });
-            const selectedButtonId = `${tabId}Btn`;
-            const selectedButton = document.getElementById(selectedButtonId);
-            const selectedTheme = buttonThemes[selectedButtonId];
-            document.getElementById(tabId).classList.add('active');
-            selectedButton.classList.remove(...selectedTheme.inactive);
-            selectedButton.classList.add(...selectedTheme.active);
-        }
 
-        function createEtapaField(nome = '') {
-            const etapaDiv = document.createElement('div');
-            etapaDiv.className = 'etapa p-4 border rounded-lg bg-gray-50 space-y-2';
-            etapaDiv.innerHTML = `<div><label class="block text-sm font-medium text-gray-700">Nome da Etapa</label><input type="text" class="etapa-nome mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Ex: Montagem" value="${nome}"></div><div class="subetapas-container pl-4 space-y-2"></div><div class="flex space-x-2"><button type="button" class="add-subetapa-btn flex-1 bg-blue-400 hover:bg-blue-500 text-white font-semibold py-1 px-2 rounded-md text-sm shadow-sm">Adicionar Sub-etapa</button><button type="button" class="remove-etapa-btn flex-1 bg-red-400 hover:bg-red-500 text-white font-semibold py-1 px-2 rounded-md text-sm shadow-sm">Remover Etapa</button></div>`;
-            elements.etapasContainer.appendChild(etapaDiv);
-            etapaDiv.querySelector('.add-subetapa-btn').addEventListener('click', function() {
-                createSubetapaField(etapaDiv.querySelector('.subetapas-container'));
-            });
-            etapaDiv.querySelector('.remove-etapa-btn').addEventListener('click', function() {
-                etapaDiv.remove();
-            });
-            return etapaDiv;
-        }
-
-        function createSubetapaField(container, nome = '') {
-            const subetapaDiv = document.createElement('div');
-            subetapaDiv.className = 'subetapa flex items-center space-x-2';
-            subetapaDiv.innerHTML = `<input type="text" class="subetapa-nome flex-1 block w-full rounded-md border-gray-300 shadow-sm p-2 text-sm" placeholder="Nome da Sub-etapa" value="${nome}"><button type="button" class="remove-subetapa-btn bg-red-400 hover:bg-red-500 text-white font-semibold py-1 px-2 rounded-md text-sm shadow-sm">Remover</button>`;
-            container.appendChild(subetapaDiv);
-            subetapaDiv.querySelector('.remove-subetapa-btn').addEventListener('click', function() {
-                subetapaDiv.remove();
-            });
-        }
-        
-        function renderizarOrdem() {
-            elements.etapasApontamentoDiv.innerHTML = '';
-            if (!ordemProducaoAtual || !ordemProducaoAtual.etapas) return;
-            elements.ordemNumeroDisplay.textContent = ordemProducaoAtual.numero;
+            if (canShowPercentage) {
+                scales.yPercentage = {
+                    beginAtZero: true, type: 'linear', position: 'right', grid: { drawOnChartArea: false },
+                    title: { display: true, text: 'Percentual (%)' },
+                    ticks: { callback: value => `${value.toFixed(0)}%` },
+                };
+            }
             
-            ordemProducaoAtual.etapas.forEach(function(etapa, index) {
-                const etapaDiv = document.createElement('div');
-                etapaDiv.className = `etapa-card p-4 border rounded-lg bg-gray-50 space-y-3 ${etapa.concluida ? 'etapa-concluida' : ''}`;
-                etapaDiv.dataset.index = index;
-                etapaDiv.innerHTML = `<div class="flex justify-between items-center"><h4 class="text-lg font-bold text-gray-800">${etapa.nome}</h4><div class="text-sm text-right"><p class="responsavel-etapa-display text-gray-600">Responsável: ${etapa.responsavel || '--'}</p><p class="text-gray-600">Tempo Líquido: <span class="font-semibold">${formatarTempo(etapa.tempoLiquido)}</span></p></div></div><div class="subetapas-apontamento-container pl-4 space-y-2 border-l-2 border-gray-200"></div>`;
-                const subetapasContainer = etapaDiv.querySelector('.subetapas-apontamento-container');
-                
-                etapa.subetapas.forEach(function(subetapa, subIndex) {
-                    const subetapaDiv = document.createElement('div');
-                    subetapaDiv.className = `subetapa-card p-3 bg-white rounded-md shadow-sm border ${subetapa.fim ? 'etapa-concluida' : ''}`;
-                    subetapaDiv.dataset.index = index; 
-                    subetapaDiv.dataset.subIndex = subIndex;
-                    const isStarted = subetapa.inicio !== null;
-                    const isFinished = subetapa.fim !== null;
-                    const isPaused = subetapa.emPausa;
-                    const canStart = !isStarted;
-                    const canInteract = !ordemProducaoAtual.concluida;
-
-                    subetapaDiv.innerHTML = `<div class="flex justify-between items-center mb-2"><p class="font-semibold">${subetapa.nome}</p><p class="responsavel-subetapa-display text-sm text-gray-500">Responsável: ${subetapa.responsavel || '--'}</p></div><div class="text-xs text-gray-500 mb-3 grid grid-cols-2 gap-x-2"><p>Tempo Líquido: <span class="font-mono">${formatarTempo(subetapa.tempoLiquido)}</span></p><p>Produtividade: <span class="font-mono">${subetapa.produtividade ? subetapa.produtividade.toFixed(2) : '--'} pçs/h</span></p></div><div class="flex space-x-2"><button class="iniciar-btn flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!canStart || isFinished || !canInteract ? 'disabled' : ''}>Iniciar</button><button class="pausar-btn flex-1 ${isPaused ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-500 hover:bg-gray-600'} text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!isStarted || isFinished || !canInteract ? 'disabled' : ''}>${isPaused ? 'Continuar' : 'Pausar'}</button><button class="concluir-btn flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!isStarted || isFinished || isPaused || !canInteract ? 'disabled' : ''}>Concluir</button></div>`;
-                    subetapasContainer.appendChild(subetapaDiv);
-                });
-                elements.etapasApontamentoDiv.appendChild(etapaDiv);
-            });
-            elements.etapasApontamentoDiv.querySelectorAll('.iniciar-btn').forEach(function(btn) { btn.addEventListener('click', handleStart); });
-            elements.etapasApontamentoDiv.querySelectorAll('.pausar-btn').forEach(function(btn) { btn.addEventListener('click', handlePause); });
-            elements.etapasApontamentoDiv.querySelectorAll('.concluir-btn').forEach(function(btn) { btn.addEventListener('click', handleConclude); });
-        }
-        
-        async function updateOrderInFirestore() {
-            if (!currentOrderDocId) return;
-            const docRef = doc(db, `artifacts/${appId}/public/data/ordens`, currentOrderDocId);
-            await setDoc(docRef, ordemProducaoAtual).catch(function(e) { console.error(e); showAviso("Erro ao salvar o progresso da ordem."); });
-        }
-
-        function handleStart(event) {
-            const parent = event.target.closest('.subetapa-card');
-            currentStartContext = { index: parseInt(parent.dataset.index), subIndex: parseInt(parent.dataset.subIndex) };
-            elements.responsavelModal.classList.remove('hidden');
-            elements.responsavelInput.value = '';
-            elements.responsavelInput.focus();
-        }
-
-        async function handlePause(event) {
-            const parent = event.target.closest('.subetapa-card');
-            const { index, subIndex } = parent.dataset;
-            const sub = ordemProducaoAtual.etapas[index].subetapas[subIndex];
-            if (sub.emPausa) {
-                const now = Date.now();
-                const lastPause = sub.pausas[sub.pausas.length - 1];
-                lastPause.fim = now;
-                sub.tempoTotalPausas += now - lastPause.inicio;
-                sub.emPausa = false;
-            } else {
-                currentPauseContext = { index, subIndex };
-                elements.justificativaModal.classList.remove('hidden');
-                elements.justificativaInput.value = '';
-                elements.justificativaInput.focus();
-                return;
-            }
-            await updateOrderInFirestore();
-            renderizarOrdem();
-        }
-
-        async function handleConclude(event) {
-            const parent = event.target.closest('.subetapa-card');
-            const { index, subIndex } = parent.dataset;
-            const sub = ordemProducaoAtual.etapas[index].subetapas[subIndex];
-            const etapa = ordemProducaoAtual.etapas[index];
-            if (sub.emPausa) return showAviso("Conclua a pausa antes de finalizar.");
-            const now = Timestamp.now();
-            sub.fim = now;
-            if (sub.inicio && typeof sub.inicio.toMillis === 'function') {
-                 sub.tempoLiquido = now.toMillis() - sub.inicio.toMillis() - sub.tempoTotalPausas;
-                 const tempoEmHoras = sub.tempoLiquido / (1000 * 60 * 60);
-                 sub.produtividade = tempoEmHoras > 0 ? ordemProducaoAtual.quantidade / tempoEmHoras : 0;
-            } else {
-                sub.tempoLiquido = 0; 
-                sub.produtividade = 0;
-            }
-            showAviso(`Sub-etapa "${sub.nome}" concluída!`);
-            if (checkAllSubetapasConcluded(etapa)) {
-                etapa.fim = now;
-                etapa.concluida = true;
-                etapa.tempoLiquido = etapa.subetapas.reduce(function(acc, s) { return acc + (s.tempoLiquido || 0); }, 0);
-                showAviso(`Etapa "${etapa.nome}" concluída!`);
-                if (checkAllEtapasConcluded(ordemProducaoAtual)) {
-                    elements.finalizarOrdemBtn.disabled = false;
-                    await handleFinalizeMain(true);
-                    return;
-                }
-            }
-            await updateOrderInFirestore();
-            renderizarOrdem();
-        }
-        
-        async function handleFinalizeMain(isAutomatic = false) {
-            if (ordemProducaoAtual.concluida || !checkAllEtapasConcluded(ordemProducaoAtual)) return;
-            ordemProducaoAtual.dataFim = Timestamp.now();
-            ordemProducaoAtual.concluida = true;
-            await updateOrderInFirestore();
-            showAviso(`Ordem finalizada ${isAutomatic ? 'automaticamente' : ''} com sucesso!`);
-            elements.voltarBtn.click();
-        }
-        
-        function carregarOrdemParaApontamento(orderId, orderData) {
-            currentOrderDocId = orderId;
-            ordemProducaoAtual = orderData;
-            switchTab('historicoTab');
-            elements.listasDeOrdensDiv.classList.add('hidden');
-            elements.ordemDetalhesDiv.classList.remove('hidden');
-            elements.finalizarOrdemBtn.disabled = ordemProducaoAtual.concluida || !checkAllEtapasConcluded(ordemProducaoAtual);
-            renderizarOrdem();
-        }
-
-        function fillFormForEditing(id, data) {
-            currentEditingProductId = id;
-            elements.codigoProdutoCadastroInput.value = data.codigo;
-            elements.etapasContainer.innerHTML = '';
-            if (data.etapas && Array.isArray(data.etapas)) {
-                data.etapas.forEach(function(etapa) {
-                    const etapaDiv = createEtapaField(etapa.nome);
-                    const subContainer = etapaDiv.querySelector('.subetapas-container');
-                    if (etapa.subetapas && Array.isArray(etapa.subetapas)) {
-                        etapa.subetapas.forEach(function(sub) {
-                            createSubetapaField(subContainer, sub.nome);
-                        });
-                    }
-                });
-            }
-            elements.salvarProdutoBtn.textContent = 'Atualizar Produto';
-            switchTab('cadastroTab');
-        }
-
-        async function exportarParaCSV() {
-            showAviso("A gerar o ficheiro CSV...");
-            try {
-                const ordensRef = collection(db, `artifacts/${appId}/public/data/ordens`);
-                const snapshot = await getDocs(query(ordensRef, orderBy("numero", "desc")));
-                
-                if (snapshot.empty) {
-                    return showAviso("Não há dados para exportar.");
-                }
-
-                let maxPausas = 0;
-                snapshot.forEach(doc => {
-                    const ordem = doc.data();
-                    if (ordem.etapas && Array.isArray(ordem.etapas)) {
-                        ordem.etapas.forEach(etapa => {
-                            if (etapa.subetapas && Array.isArray(etapa.subetapas)) {
-                                etapa.subetapas.forEach(sub => {
-                                    if (sub.pausas && sub.pausas.length > maxPausas) {
-                                        maxPausas = sub.pausas.length;
-                                    }
-                                });
-                            }
-                        });
-                    }
-                });
-
-                let csvHeader = "Ordem,Produto,Qtd Total,Status,Etapa,Subetapa,Responsavel,Data Inicio,Hora Inicio,Data Fim,Hora Fim,Tempo Liquido,Tempo Total Pausa,Produtividade (pcs/h)";
-                for (let i = 1; i <= maxPausas; i++) {
-                    csvHeader += `,Motivo Pausa ${i},Duracao Pausa ${i}`;
-                }
-                csvHeader += "\n";
-
-                let csvContent = csvHeader;
-                
-                snapshot.forEach(function(doc) {
-                    const ordem = doc.data();
-                    const status = ordem.concluida ? "Concluída" : "Em Andamento";
-
-                    if (ordem.etapas && Array.isArray(ordem.etapas)) {
-                        ordem.etapas.forEach(function(etapa) {
-                            if (etapa.subetapas && Array.isArray(etapa.subetapas)) {
-                                etapa.subetapas.forEach(function(sub) {
-                                    const dataInicio = (sub.inicio && typeof sub.inicio.toDate === 'function') ? sub.inicio.toDate() : null;
-                                    const dataFim = (sub.fim && typeof sub.fim.toDate === 'function') ? sub.fim.toDate() : null;
-
-                                    const dataInicioStr = dataInicio ? dataInicio.toLocaleDateString('pt-BR') : 'N/A';
-                                    const horaInicioStr = dataInicio ? dataInicio.toLocaleTimeString('pt-BR') : 'N/A';
-                                    const dataFimStr = dataFim ? dataFim.toLocaleDateString('pt-BR') : 'N/A';
-                                    const horaFimStr = dataFim ? dataFim.toLocaleTimeString('pt-BR') : 'N/A';
-                                    
-                                    const tempo = formatarTempo(sub.tempoLiquido || 0);
-                                    const tempoPausaTotal = formatarTempo(sub.tempoTotalPausas || 0);
-                                    const prod = (typeof sub.produtividade === 'number') ? sub.produtividade.toFixed(2) : '0.00';
-                                    
-                                    let pausasCsv = [];
-                                    if (sub.pausas && Array.isArray(sub.pausas)) {
-                                        sub.pausas.forEach(function(p) {
-                                            const duracao = (p.fim && p.inicio) ? formatarTempo(p.fim - p.inicio) : 'N/A';
-                                            pausasCsv.push(`"${p.justificativa.replace(/"/g, '""')}"`);
-                                            pausasCsv.push(`"${duracao}"`);
-                                        });
-                                    }
-                                    
-                                    while (pausasCsv.length < maxPausas * 2) {
-                                        pausasCsv.push('""', '""');
-                                    }
-                                    
-                                    const row = [
-                                        `"${ordem.numero}"`, `"${ordem.produto}"`, ordem.quantidade, `"${status}"`,
-                                        `"${etapa.nome}"`, `"${sub.nome}"`, `"${sub.responsavel || ''}"`,
-                                        `"${dataInicioStr}"`, `"${horaInicioStr}"`, `"${dataFimStr}"`, `"${horaFimStr}"`,
-                                        `"${tempo}"`, `"${tempoPausaTotal}"`, `"${prod}"`,
-                                        ...pausasCsv
-                                    ].join(",");
-                                    csvContent += row + "\n";
-                                });
-                            }
-                        });
-                    }
-                });
-
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `historico_producao_${new Date().toISOString().slice(0,10)}.csv`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                showAviso("Exportação concluída!");
-
-            } catch (e) {
-                console.error("Erro ao exportar CSV:", e);
-                showAviso("Ocorreu um erro ao exportar os dados.");
-            }
-        }
-        
-        function processAndDisplayDashboardData() {
-            let productivityData = {};
-            const subetapaSet = new Set();
-
-            allOrdersData.forEach(function(ordem) {
-                if (!ordem.concluida || !ordem.etapas || !Array.isArray(ordem.etapas)) return;
-                
-                ordem.etapas.forEach(function(etapa) {
-                    if (!etapa.subetapas || !Array.isArray(etapa.subetapas)) return;
-
-                    etapa.subetapas.forEach(function(sub) {
-                        if (sub.fim && sub.responsavel) {
-                            const subetapaNome = sub.nome.trim();
-                            const responsavel = sub.responsavel.trim();
-                            
-                            subetapaSet.add(subetapaNome);
-
-                            if (!productivityData[subetapaNome]) {
-                                productivityData[subetapaNome] = {};
-                            }
-                            if (!productivityData[subetapaNome][responsavel]) {
-                                productivityData[subetapaNome][responsavel] = { totalPcsHora: 0, count: 0 };
-                            }
-
-                            productivityData[subetapaNome][responsavel].totalPcsHora += sub.produtividade || 0;
-                            productivityData[subetapaNome][responsavel].count++;
-                        }
-                    });
-                });
-            });
-
-            const filter = elements.subetapaFilter;
-            const currentVal = filter.value;
-            filter.innerHTML = '<option value="">Selecione uma sub-etapa...</option>';
-            [...subetapaSet].sort().forEach(function(subetapa) {
-                const option = document.createElement('option');
-                option.value = subetapa;
-                option.textContent = subetapa;
-                filter.appendChild(option);
-            });
-            
-            if (currentVal && subetapaSet.has(currentVal)) {
-                 filter.value = currentVal;
-            }
-           
-            if (filter.value) {
-                updateDashboardChart(filter.value, productivityData);
-            } else {
-                updateDashboardChart(null, null); 
-            }
-        }
-
-        function updateDashboardChart(subetapaNome, productivityData) {
-            const ctx = document.getElementById('produtividadeChart').getContext('2d');
-            
-            if (productivityChart) {
-                productivityChart.destroy();
+            const isSingleSeries = datasets.length === 1 && !canShowPercentage;
+            const isPieType = ['pie', 'doughnut'].includes(type);
+            yAxisContainer.style.display = isPieType ? 'none' : 'block';
+            percentageContainer.style.display = ['bar', 'line'].includes(type) && yCols.length === 1 ? 'block' : 'none';
+            if (!(['bar', 'line'].includes(type) && yCols.length === 1)) {
+                showPercentageCheckbox.checked = false;
             }
 
-            if (!subetapaNome || !productivityData[subetapaNome]) {
-                if (ctx) { 
-                    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-                }
-                return;
-            }
-
-            const data = productivityData[subetapaNome];
-            const labels = Object.keys(data).sort();
-            const averages = labels.map(function(label) {
-                return data[label].totalPcsHora / data[label].count;
-            });
-
-            productivityChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: `Produtividade Média (pçs/h) para "${subetapaNome}"`,
-                        data: averages,
-                        backgroundColor: 'rgba(79, 70, 229, 0.8)',
-                        borderColor: 'rgba(79, 70, 229, 1)',
-                        borderWidth: 1
-                    }]
+            chartInstance.data = { labels, datasets };
+            chartInstance.config.type = type === 'scatter' ? 'scatter' : (datasets.length > 1 && canShowPercentage ? 'bar' : type);
+            chartInstance.options = {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    title: { display: true, text: title, font: { size: 18 } },
+                    legend: { display: !isSingleSeries || isPieType, position: isPieType ? 'top' : 'bottom' }
                 },
-                options: {
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: { display: true, text: 'Peças por Hora' }
-                        }
-                    },
-                    responsive: true,
-                    maintainAspectRatio: false
-                }
-            });
+                scales: (type === 'scatter' || type === 'line' || type === 'bar') ? scales : {}
+            };
+            chartInstance.update();
         }
 
-        function setupFirebaseListeners() {
-            if (!userId) return;
-            
-            const produtosRef = collection(db, `artifacts/${appId}/public/data/produtos`);
-            onSnapshot(query(produtosRef, orderBy("codigo")), function(snapshot) {
-                elements.listaProdutosCadastradosUl.innerHTML = '';
-                elements.produtoApontamentoSelect.innerHTML = '<option value="">Selecione um produto...</option>';
-                snapshot.forEach(function(doc) {
-                    const data = doc.data();
-                    const li = document.createElement('li');
-                    li.className = 'product-item';
-                    li.textContent = data.codigo;
-                    li.addEventListener('click', function() {
-                        fillFormForEditing(doc.id, data);
-                    });
-                    elements.listaProdutosCadastradosUl.appendChild(li);
-                    const option = document.createElement('option');
-                    option.value = doc.id;
-                    option.textContent = data.codigo;
-                    elements.produtoApontamentoSelect.appendChild(option);
-                });
-            });
-            
-            const ordensRef = collection(db, `artifacts/${appId}/public/data/ordens`);
-            onSnapshot(query(ordensRef, orderBy("numero", "desc")), function(snapshot) {
-                elements.ordensEmAndamentoUl.innerHTML = '';
-                elements.ordensConcluidasUl.innerHTML = '';
-                const orders = [];
-                snapshot.forEach(function(doc) {
-                    const data = doc.data();
-                    orders.push(data); 
-                    const li = document.createElement('li');
-                    li.className = 'p-4 bg-gray-100 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-200';
-                    li.addEventListener('click', function() {
-                        carregarOrdemParaApontamento(doc.id, data);
-                    });
-                    li.innerHTML = `<p class="font-semibold text-gray-800">Ordem #${data.numero}</p><p class="text-sm text-gray-600"><strong>Produto:</strong> ${data.produto}</p><p class="text-sm text-gray-600"><strong>Quantidade:</strong> ${data.quantidade}</p><p class="text-sm text-gray-600"><strong>Início:</strong> ${data.dataInicio ? data.dataInicio.toDate().toLocaleString('pt-BR') : '--'}</p><p class="text-sm text-gray-600"><strong>Fim:</strong> ${data.dataFim ? data.dataFim.toDate().toLocaleString('pt-BR') : '--'}</p><p class="text-sm text-gray-600"><strong>Status:</strong> ${data.concluida ? '<span class="font-bold text-green-600">Concluída</span>' : '<span class="font-bold text-blue-600">Em Andamento</span>'}</p>`;
-                    if (data.concluida) {
-                        elements.ordensConcluidasUl.appendChild(li);
-                    } else {
-                        elements.ordensEmAndamentoUl.appendChild(li);
-                    }
-                });
-                allOrdersData = orders;
-                processAndDisplayDashboardData();
-            });
-        }
-        
-        async function initializeFirebase() {
-            try {
-                const app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-                
-                onAuthStateChanged(auth, function(user) {
-                    if (user) {
-                        userId = user.uid;
-                        elements.userIdDisplay.textContent = userId;
-                        setupFirebaseListeners();
-                    } else {
-                        if (initialAuthToken) {
-                            signInWithCustomToken(auth, initialAuthToken).catch(function(err) {
-                                console.error("Falha no login com token, tentando anônimo:", err);
-                                signInAnonymously(auth);
-                            });
-                        } else {
-                            signInAnonymously(auth);
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error("Erro ao inicializar Firebase:", error);
-                showAviso("Erro ao conectar com o banco de dados.");
+        function getChartData(xCol, yCol, type) {
+            if (type === 'scatter') {
+                const data = rawData.map(row => ({ x: parseFloat(row[xCol]), y: parseFloat(row[yCol]) }))
+                    .filter(p => !isNaN(p.x) && !isNaN(p.y));
+                return { labels: data.map(p => p.x), data };
             }
-        }
-        
-        function bindEventListeners() {
-            elements.cadastroTabBtn.addEventListener('click', function() { switchTab('cadastroTab'); });
-            elements.apontamentoTabBtn.addEventListener('click', function() { switchTab('apontamentoTab'); });
-            elements.historicoTabBtn.addEventListener('click', function() { switchTab('historicoTab'); });
-            elements.dashboardTabBtn.addEventListener('click', function() { switchTab('dashboardTab'); });
-            elements.addEtapaBtn.addEventListener('click', createEtapaField);
-            elements.fecharAvisoBtn.addEventListener('click', function() { elements.avisoModal.classList.add('hidden'); });
-            elements.exportarBtn.addEventListener('click', exportarParaCSV);
-            elements.subetapaFilter.addEventListener('change', function() { processAndDisplayDashboardData(); });
-            
-            elements.voltarBtn.addEventListener('click', function() {
-                elements.ordemDetalhesDiv.classList.add('hidden');
-                elements.listasDeOrdensDiv.classList.remove('hidden');
-                currentOrderDocId = null;
-                ordemProducaoAtual = {};
-            });
-            
-            elements.finalizarOrdemBtn.addEventListener('click', function() { handleFinalizeMain(false); });
-            elements.cancelarJustificativaBtn.addEventListener('click', function() { elements.justificativaModal.classList.add('hidden'); });
-            elements.cancelarResponsavelBtn.addEventListener('click', function() { elements.responsavelModal.classList.add('hidden'); });
-            
-            elements.salvarProdutoBtn.addEventListener('click', async function() {
-                const codigo = elements.codigoProdutoCadastroInput.value.trim();
-                if (!codigo) return showAviso("O código do produto é obrigatório.");
-                
-                const etapas = [];
-                let hasError = false;
-                elements.etapasContainer.querySelectorAll('.etapa').forEach(function(el) {
-                    const nomeEtapa = el.querySelector('.etapa-nome').value.trim();
-                    if (!nomeEtapa) hasError = true;
-                    const subetapas = [];
-                    el.querySelectorAll('.subetapa-nome').forEach(function(subEl) {
-                        const nomeSub = subEl.value.trim();
-                        if (!nomeSub) hasError = true;
-                        subetapas.push({ nome: nomeSub });
-                    });
-                    etapas.push({ nome: nomeEtapa, subetapas: subetapas });
-                });
+            const groupedData = rawData.reduce((acc, row) => {
+                const key = row[xCol];
+                if (key === undefined || key === '') return acc;
+                if (!acc[key]) acc[key] = { sum: 0, count: 0 };
+                acc[key].count++;
+                if (yCol) {
+                    const value = parseFloat(row[yCol]);
+                    if (!isNaN(value)) acc[key].sum += value;
+                }
+                return acc;
+            }, {});
 
-                if (hasError) return showAviso("Todos os nomes de etapas e sub-etapas são obrigatórios.");
-                
-                try {
-                    const produtoData = { codigo, etapas };
-                    const produtosRef = collection(db, `artifacts/${appId}/public/data/produtos`);
-                    if (currentEditingProductId) {
-                        await setDoc(doc(produtosRef, currentEditingProductId), produtoData);
-                        showAviso("Produto atualizado!");
-                    } else {
-                        await addDoc(produtosRef, produtoData);
-                        showAviso("Produto salvo!");
-                    }
-                    elements.codigoProdutoCadastroInput.value = '';
-                    elements.etapasContainer.innerHTML = '';
-                    elements.salvarProdutoBtn.textContent = 'Salvar Produto';
-                    currentEditingProductId = null;
-                } catch(e) { console.error(e); showAviso("Erro ao salvar produto."); }
-            });
-
-            elements.abrirOrdemBtn.addEventListener('click', async function() {
-                const numero = elements.numeroOrdemInput.value.trim();
-                const produtoId = elements.produtoApontamentoSelect.value;
-                const quantidade = parseInt(elements.quantidadeApontamentoInput.value, 10);
-                if (!numero || !produtoId || isNaN(quantidade) || quantidade <= 0) return showAviso("Preencha todos os campos.");
-                
-                try {
-                    const ordensRef = collection(db, `artifacts/${appId}/public/data/ordens`);
-                    const q = query(ordensRef, where("numero", "==", numero));
-                    if (!(await getDocs(q)).empty) return showAviso(`A ordem #${numero} já existe.`);
-                    
-                    const produtoDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/produtos`, produtoId));
-                    if (!produtoDoc.exists()) return showAviso("Produto não encontrado.");
-                    
-                    const pData = produtoDoc.data();
-                    const etapas = pData.etapas.map(function(e) {
-                        return {
-                            ...e, inicio: null, fim: null, responsavel: null, concluida: false, tempoLiquido: 0,
-                            subetapas: e.subetapas.map(function(s) {
-                                return {...s, inicio: null, fim: null, responsavel: null, emPausa: false, pausas: [], tempoTotalPausas: 0, tempoLiquido: 0, produtividade: 0 };
-                            })
-                        };
-                    });
-                    
-                    await addDoc(ordensRef, { numero, produto: pData.codigo, produtoId, quantidade, dataInicio: null, dataFim: null, concluida: false, etapas });
-                    
-                    showAviso(`Ordem #${numero} aberta!`);
-                    elements.numeroOrdemInput.value = '';
-                    elements.produtoApontamentoSelect.value = '';
-                    elements.quantidadeApontamentoInput.value = '';
-                    switchTab('historicoTab');
-                } catch (e) { console.error(e); showAviso("Erro ao abrir ordem."); }
-            });
-
-            elements.salvarResponsavelBtn.addEventListener('click', async function() {
-                const responsavel = elements.responsavelInput.value.trim();
-                if (!responsavel || !currentStartContext) return;
-                
-                const { index, subIndex } = currentStartContext;
-                const now = Timestamp.now();
-                const subetapa = ordemProducaoAtual.etapas[index].subetapas[subIndex];
-                subetapa.inicio = now;
-                subetapa.responsavel = responsavel;
-                
-                const etapa = ordemProducaoAtual.etapas[index];
-                if (!etapa.inicio) { etapa.inicio = now; etapa.responsavel = responsavel; }
-                if (!ordemProducaoAtual.dataInicio) ordemProducaoAtual.dataInicio = now;
-
-                elements.responsavelModal.classList.add('hidden');
-                await updateOrderInFirestore();
-                renderizarOrdem();
-            });
-
-            elements.salvarJustificativaBtn.addEventListener('click', async function() {
-                const justificativa = elements.justificativaInput.value.trim();
-                if (!justificativa || !currentPauseContext) return;
-
-                const { index, subIndex } = currentPauseContext;
-                const sub = ordemProducaoAtual.etapas[index].subetapas[subIndex];
-                sub.pausas.push({ justificativa, inicio: Date.now(), fim: null });
-                sub.emPausa = true;
-                
-                elements.justificativaModal.classList.add('hidden');
-                await updateOrderInFirestore();
-                renderizarOrdem();
-            });
-        }
-        
-        function main() {
-            bindEventListeners();
-            initializeFirebase();
-            switchTab('cadastroTab');
+            const labels = Object.keys(groupedData).sort();
+            const data = labels.map(label => !yCol ? groupedData[label].count : (groupedData[label].sum / groupedData[label].count));
+            return { labels, data };
         }
 
-        main();
+        function generateColors(numColors, offset = 0) {
+            const colors = [];
+            const baseColors = [
+                [54, 162, 235], [255, 99, 132], [75, 192, 192],
+                [255, 206, 86], [153, 102, 255], [255, 159, 64]
+            ];
+            for (let i = 0; i < numColors; i++) {
+                const color = baseColors[(i + offset) % baseColors.length];
+                colors.push(`rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.6)`);
+            }
+            return colors;
+        }
+
+        // --- Event Listeners ---
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => dropZone.addEventListener(ev, e => {e.preventDefault(); e.stopPropagation();}));
+        ['dragenter', 'dragover'].forEach(ev => dropZone.addEventListener(ev, () => dropZone.classList.add('border-blue-500', 'bg-blue-50')));
+        ['dragleave', 'drop'].forEach(ev => dropZone.addEventListener(ev, () => dropZone.classList.remove('border-blue-500', 'bg-blue-50')));
+        dropZone.addEventListener('drop', e => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) { fileInput.files = files; handleFile(files[0]); }
+        });
+        browseButton.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', e => e.target.files.length && handleFile(e.target.files[0]));
+        resetButton.addEventListener('click', resetApp);
+        addChartButton.addEventListener('click', createChartCard);
     </script>
 </body>
 </html>
